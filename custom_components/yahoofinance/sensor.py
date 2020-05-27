@@ -1,6 +1,5 @@
 """
 A component which presents Yahoo Finance stock quotes.
-https://github.com/custom-components/sensor.weatheralerts
 """
 
 from datetime import timedelta
