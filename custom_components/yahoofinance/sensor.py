@@ -1,35 +1,60 @@
 """
 A component which presents Yahoo Finance stock quotes.
-https://github.com/custom-components/sensor.weatheralerts
+
+https://github.com/InduPrakash/yahoofinance
 """
 
 from datetime import timedelta
+import aiohttp
+import asyncio
 import logging
-import voluptuous as vol
 import async_timeout
+import voluptuous as vol
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_SCAN_INTERVAL
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    ATTR_FIFTY_DAY_AVERAGE,
+    ATTR_FIFTY_DAY_SYMBOL,
+    ATTR_PREVIOUS_CLOSE,
+    ATTRIBUTION,
     BASE,
     CONF_SYMBOLS,
+    DEFAULT_CURRENCY,
+    DEFAULT_ICON,
     DOMAIN,
-    ICON,
 )
 
+CURRENCIES = [
+    "bdt",
+    "brl",
+    "btc",
+    "cny",
+    "eth",
+    "eur",
+    "gbp",
+    "ils",
+    "inr",
+    "jpy",
+    "krw",
+    "kzt",
+    "ngn",
+    "php",
+    "rial",
+    "rub",
+    "sign",
+    "try",
+    "twd",
+    "usd",
+]
+
 _LOGGER = logging.getLogger(__name__)
-
-ATTRIBUTION = "Data provided by Yahoo Finance"
-ATTR_FIFTY_DAY_AVERAGE = "fiftyDayAverage"
-ATTR_PREVIOUS_CLOSE = "previousClose"
-ATTR_FIFTY_DAY_SYMBOL = "symbol"
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
-
 SCAN_INTERVAL = timedelta(hours=6)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -58,27 +83,30 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class YahooFinanceSensor(Entity):
-    """Defines a Yahoo finance sensor"""
+    """Defines a Yahoo finance sensor."""
 
+    _currency = DEFAULT_CURRENCY
+    _fifty_day_average = None
+    _icon = DEFAULT_ICON
+    _previous_close = None
+    _short_name = None
+    _state = None
     _symbol = None
-    _shortName = None
-    _fiftyDayAverage = None
 
     def __init__(self, coordinator, symbol, hass) -> None:
         """Initialize the sensor."""
         self._symbol = symbol
         self._coordinator = coordinator
-        self._unit_of_measurement = "USD"
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
         _LOGGER.debug("Created %s", self.entity_id)
 
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        if self._shortName is not None:
-            return self._shortName
-        else:
-            return self._symbol
+        if self._short_name is not None:
+            return self._short_name
+
+        return self._symbol
 
     @property
     def should_poll(self) -> bool:
@@ -93,7 +121,7 @@ class YahooFinanceSensor(Entity):
     @property
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement of this entity, if any."""
-        return self._unit_of_measurement
+        return self._currency
 
     @property
     def device_state_attributes(self):
@@ -101,28 +129,38 @@ class YahooFinanceSensor(Entity):
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             ATTR_FIFTY_DAY_SYMBOL: self._symbol,
-            ATTR_FIFTY_DAY_AVERAGE: self._fiftyDayAverage,
-            ATTR_PREVIOUS_CLOSE: self._previousClose,
+            ATTR_FIFTY_DAY_AVERAGE: self._fifty_day_average,
+            ATTR_PREVIOUS_CLOSE: self._previous_close,
         }
 
     @property
     def icon(self) -> str:
         """Return the icon to use in the frontend, if any."""
-        return ICON
+        return self._icon
 
     def fetch_data(self) -> None:
+        """Fetch data and populate local fields."""
         data = self._coordinator.data
         if data is None:
             return
 
-        symbolData = data[self._symbol]
-        if symbolData is None:
+        symbol_data = data[self._symbol]
+        if symbol_data is None:
             return
 
-        self._shortName = symbolData["shortName"]
-        self._state = symbolData["regularMarketPrice"]
-        self._fiftyDayAverage = symbolData["fiftyDayAverage"]
-        self._previousClose = symbolData["regularMarketPreviousClose"]
+        self._short_name = symbol_data["shortName"]
+        self._state = symbol_data["regularMarketPrice"]
+        self._fifty_day_average = symbol_data["fiftyDayAverage"]
+        self._previous_close = symbol_data["regularMarketPreviousClose"]
+
+        currency = symbol_data["financialCurrency"]
+        if currency is None:
+            currency = symbol_data.get("currency", DEFAULT_CURRENCY)
+
+        self._currency = currency.upper()
+        lower_currency = self._currency.lower()
+        if lower_currency in CURRENCIES:
+            self._icon = "mdi:currency-" + lower_currency
 
     @property
     def available(self) -> bool:
@@ -172,17 +210,19 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             async with async_timeout.timeout(10, loop=self.loop):
                 response = await self.websession.get(BASE + ",".join(self._symbols))
                 json = await response.json()
-        except Exception:
-            pass
 
-        _LOGGER.debug("Data = %s", json)
+            _LOGGER.debug("Data = %s", json)
+        except asyncio.TimeoutError:
+            _LOGGER.error("Timed out getting data")
+        except aiohttp.ClientError as exception:
+            _LOGGER.error("Error getting data: %s", exception)
+
         return json
 
     async def update(self):
         """Update data."""
-        try:
-            json = await self.get_json()
-
+        json = await self.get_json()
+        if json is not None:
             if "error" in json:
                 raise ValueError(json["error"]["info"])
 
@@ -192,10 +232,14 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             for item in result:
                 symbol = item["symbol"]
                 data[symbol] = {
-                    "regularMarketPrice": item["regularMarketPrice"],
-                    "shortName": item["shortName"],
-                    "fiftyDayAverage": item["fiftyDayAverage"],
-                    "regularMarketPreviousClose": item["regularMarketPreviousClose"],
+                    "regularMarketPrice": item.get("regularMarketPrice", 0),
+                    "shortName": item.get("shortName"),
+                    "fiftyDayAverage": item.get("fiftyDayAverage", 0),
+                    "regularMarketPreviousClose": item.get(
+                        "regularMarketPreviousClose", 0
+                    ),
+                    "currency": item.get("currency"),
+                    "financialCurrency": item.get("financialCurrency"),
                 }
                 _LOGGER.debug(
                     "Updated %s=%s", symbol, data[symbol]["regularMarketPrice"],
@@ -203,6 +247,3 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
 
             self.data = data
             _LOGGER.info("Data updated")
-        except ValueError as err:
-            _LOGGER.error("Data update error: %s", err.args)
-            self.data = None
