@@ -4,58 +4,45 @@ A component which presents Yahoo Finance stock quotes.
 https://github.com/InduPrakash/yahoofinance
 """
 
-from datetime import timedelta
-import aiohttp
 import asyncio
 import logging
+from datetime import timedelta
+
+import aiohttp
 import async_timeout
 import voluptuous as vol
 
+import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_SCAN_INTERVAL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from .const import (
+    ATTR_CURRENCY_SYMBOL,
     ATTR_FIFTY_DAY_AVERAGE,
     ATTR_FIFTY_DAY_SYMBOL,
     ATTR_PREVIOUS_CLOSE,
     ATTRIBUTION,
     BASE,
     CONF_SYMBOLS,
+    CURRENCY_CODES,
     DEFAULT_CURRENCY,
+    DEFAULT_CURRENCY_SYMBOL,
     DEFAULT_ICON,
     DOMAIN,
+    SERVICE_REFRESH,
 )
-
-CURRENCIES = [
-    "bdt",
-    "brl",
-    "btc",
-    "cny",
-    "eth",
-    "eur",
-    "gbp",
-    "ils",
-    "inr",
-    "jpy",
-    "krw",
-    "kzt",
-    "ngn",
-    "php",
-    "rial",
-    "rub",
-    "sign",
-    "try",
-    "twd",
-    "usd",
-]
 
 _LOGGER = logging.getLogger(__name__)
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
 SCAN_INTERVAL = timedelta(hours=6)
+DEFAULT_TIMEOUT = 10
+
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -65,7 +52,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):  # pylint: disable=unused-argument
     """Set up the Yahoo Finance sensors."""
     symbols = config.get(CONF_SYMBOLS, [])
     coordinator = YahooSymbolUpdateCoordinator(
@@ -78,14 +65,26 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         sensors.append(YahooFinanceSensor(coordinator, symbol, hass))
 
     # The True param fetches data first time before being written to HA
-    async_add_entities(sensors, False)
+    async_add_entities(sensors, True)
+
+    async def handle_refresh_symbols(_call):
+        """Refresh symbol data."""
+        _LOGGER.info("Processing refresh_symbols")
+        await coordinator.async_request_refresh()
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_REFRESH, handle_refresh_symbols,
+    )
+
     _LOGGER.info("Added sensors for %s", symbols)
 
 
 class YahooFinanceSensor(Entity):
     """Defines a Yahoo finance sensor."""
 
+    # pylint: disable=too-many-instance-attributes
     _currency = DEFAULT_CURRENCY
+    _currency_symbol = DEFAULT_CURRENCY_SYMBOL
     _fifty_day_average = None
     _icon = DEFAULT_ICON
     _previous_close = None
@@ -97,7 +96,9 @@ class YahooFinanceSensor(Entity):
         """Initialize the sensor."""
         self._symbol = symbol
         self._coordinator = coordinator
-        self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
+        self.entity_id = async_generate_entity_id(
+            ENTITY_ID_FORMAT, symbol, hass=hass
+        )
         _LOGGER.debug("Created %s", self.entity_id)
 
     @property
@@ -128,6 +129,7 @@ class YahooFinanceSensor(Entity):
         """Return the state attributes."""
         return {
             ATTR_ATTRIBUTION: ATTRIBUTION,
+            ATTR_CURRENCY_SYMBOL: self._currency_symbol,
             ATTR_FIFTY_DAY_SYMBOL: self._symbol,
             ATTR_FIFTY_DAY_AVERAGE: self._fifty_day_average,
             ATTR_PREVIOUS_CLOSE: self._previous_close,
@@ -159,8 +161,10 @@ class YahooFinanceSensor(Entity):
 
         self._currency = currency.upper()
         lower_currency = self._currency.lower()
-        if lower_currency in CURRENCIES:
+        self._icon = "mdi:currency-" + lower_currency
+        if lower_currency in CURRENCY_CODES:
             self._icon = "mdi:currency-" + lower_currency
+            self._currency_symbol = CURRENCY_CODES[lower_currency]
 
     @property
     def available(self) -> bool:
@@ -196,7 +200,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_update_data(self):
-        """Update data."""
+        """Fetch the latest data from the source."""
         try:
             await self.update()
         except () as error:
@@ -207,15 +211,20 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         """Get the JSON data."""
         json = None
         try:
-            async with async_timeout.timeout(10, loop=self.loop):
-                response = await self.websession.get(BASE + ",".join(self._symbols))
+            async with async_timeout.timeout(DEFAULT_TIMEOUT, loop=self.loop):
+                response = await self.websession.get(
+                    BASE + ",".join(self._symbols)
+                )
                 json = await response.json()
 
             _LOGGER.debug("Data = %s", json)
+            self.last_update_success = True
         except asyncio.TimeoutError:
             _LOGGER.error("Timed out getting data")
+            self.last_update_success = False
         except aiohttp.ClientError as exception:
             _LOGGER.error("Error getting data: %s", exception)
+            self.last_update_success = False
 
         return json
 

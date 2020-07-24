@@ -23,6 +23,7 @@ The above configuration will generate an entity with the id `yahoofinance.istnx`
 
 ```
 attribution: Data provided by Yahoo Finance
+currencySymbol: $
 symbol: ISTNX
 fiftyDayAverage: ...
 previousClose: ...
@@ -32,3 +33,6 @@ icon: mdi:currency-usd
 ```
 
 `scan_interval` is optional and the default value is 6 hours.
+
+
+The component also exposes the service `yahoofinance.refresh_symbols` which will refresh all the data.
