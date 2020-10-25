@@ -36,3 +36,6 @@ icon: mdi:currency-usd
 
 
 The component also exposes the service `yahoofinance.refresh_symbols` which will refresh all the data.
+
+Click below for an installation walk-through. 
+[![https://www.vcloudinfo.com/2020/10/how-to-track-stocks-in-home-assistant-using-a-custom-component.html](https://github.com/CCOSTAN/Home-AssistantConfig/blob/master/config/www/custom_ui/floorplan/images/youtube/episodes/yahoostocks.png?raw=true)](https://www.vcloudinfo.com/2020/10/how-to-track-stocks-in-home-assistant-using-a-custom-component.html)
