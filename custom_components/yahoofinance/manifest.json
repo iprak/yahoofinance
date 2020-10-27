@@ -4,5 +4,6 @@
   "documentation": "https://github.com/InduPrakash/yahoofinance",
   "requirements": [],
   "dependencies": [],
-  "codeowners": [ "@induprakash" ]
+  "codeowners": [ "@induprakash" ],
+  "issue_tracker": "https://github.com/InduPrakash/yahoofinance/issues"
 }
