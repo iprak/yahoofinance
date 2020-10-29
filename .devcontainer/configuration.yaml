@@ -7,6 +7,6 @@ logger:
 
 sensor:
   platform: yahoofinance
-  use_trending_icon: True
+  show_trending_icon: True
   symbols:
     - ISTNX

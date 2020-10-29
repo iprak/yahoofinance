@@ -29,6 +29,7 @@ from .const import (
     ATTR_PREVIOUS_CLOSE,
     ATTRIBUTION,
     BASE,
+    CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CURRENCY_CODES,
     DEFAULT_CURRENCY,
@@ -42,19 +43,28 @@ _LOGGER = logging.getLogger(__name__)
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
 SCAN_INTERVAL = timedelta(hours=6)
 DEFAULT_TIMEOUT = 10
-
+DEFAULT_CONF_SHOW_TRENDING_ICON = False
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_SYMBOLS): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
+        vol.Optional(
+            CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
+        ): cv.boolean,
     }
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):  # pylint: disable=unused-argument
+async def async_setup_platform(
+    hass, config, async_add_entities, discovery_info=None
+):  # pylint: disable=unused-argument
     """Set up the Yahoo Finance sensors."""
     symbols = config.get(CONF_SYMBOLS, [])
+    show_trending_icon = config.get(
+        CONF_SHOW_TRENDING_ICON, DEFAULT_CONF_SHOW_TRENDING_ICON
+    )
+
     coordinator = YahooSymbolUpdateCoordinator(
         symbols, hass, config.get(CONF_SCAN_INTERVAL)
     )
@@ -62,7 +72,9 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     sensors = []
     for symbol in symbols:
-        sensors.append(YahooFinanceSensor(coordinator, symbol, hass))
+        sensors.append(
+            YahooFinanceSensor(hass, coordinator, symbol, show_trending_icon)
+        )
 
     # The True param fetches data first time before being written to HA
     async_add_entities(sensors, True)
@@ -73,7 +85,9 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         await coordinator.async_request_refresh()
 
     hass.services.async_register(
-        DOMAIN, SERVICE_REFRESH, handle_refresh_symbols,
+        DOMAIN,
+        SERVICE_REFRESH,
+        handle_refresh_symbols,
     )
 
     _LOGGER.info("Added sensors for %s", symbols)
@@ -92,13 +106,12 @@ class YahooFinanceSensor(Entity):
     _state = None
     _symbol = None
 
-    def __init__(self, coordinator, symbol, hass) -> None:
+    def __init__(self, hass, coordinator, symbol, show_trending_icon) -> None:
         """Initialize the sensor."""
         self._symbol = symbol
         self._coordinator = coordinator
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT, symbol, hass=hass
-        )
+        self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
+        self.show_trending_icon = show_trending_icon
         _LOGGER.debug("Created %s", self.entity_id)
 
     @property
@@ -161,9 +174,19 @@ class YahooFinanceSensor(Entity):
 
         self._currency = currency.upper()
         lower_currency = self._currency.lower()
-        self._icon = "mdi:currency-" + lower_currency
-        if lower_currency in CURRENCY_CODES:
+
+        # Fall back to currency based icon if there is no _previous_close value
+        if self.show_trending_icon and not (self._previous_close is None):
+            if self._state > self._previous_close:
+                self._icon = "mdi:trending-up"
+            elif self._state < self._previous_close:
+                self._icon = "mdi:trending-down"
+            else:
+                self._icon = "mdi:trending-neutral"
+        else:
             self._icon = "mdi:currency-" + lower_currency
+
+        if lower_currency in CURRENCY_CODES:
             self._currency_symbol = CURRENCY_CODES[lower_currency]
 
     @property
@@ -196,7 +219,10 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         self.websession = async_get_clientsession(hass)
 
         super().__init__(
-            hass, _LOGGER, name=DOMAIN, update_interval=update_interval,
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=update_interval,
         )
 
     async def _async_update_data(self):
@@ -212,9 +238,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         json = None
         try:
             async with async_timeout.timeout(DEFAULT_TIMEOUT, loop=self.loop):
-                response = await self.websession.get(
-                    BASE + ",".join(self._symbols)
-                )
+                response = await self.websession.get(BASE + ",".join(self._symbols))
                 json = await response.json()
 
             _LOGGER.debug("Data = %s", json)
@@ -251,7 +275,9 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
                     "financialCurrency": item.get("financialCurrency"),
                 }
                 _LOGGER.debug(
-                    "Updated %s=%s", symbol, data[symbol]["regularMarketPrice"],
+                    "Updated %s=%s",
+                    symbol,
+                    data[symbol]["regularMarketPrice"],
                 )
 
             self.data = data
