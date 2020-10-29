@@ -10,17 +10,13 @@ from datetime import timedelta
 
 import aiohttp
 import async_timeout
-import voluptuous as vol
-
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_SCAN_INTERVAL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     ATTR_CURRENCY_SYMBOL,
@@ -52,7 +48,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):  # pylint: disable=unused-argument
+async def async_setup_platform(
+    hass, config, async_add_entities, discovery_info=None
+):  # pylint: disable=unused-argument
     """Set up the Yahoo Finance sensors."""
     symbols = config.get(CONF_SYMBOLS, [])
     coordinator = YahooSymbolUpdateCoordinator(
@@ -73,7 +71,9 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         await coordinator.async_request_refresh()
 
     hass.services.async_register(
-        DOMAIN, SERVICE_REFRESH, handle_refresh_symbols,
+        DOMAIN,
+        SERVICE_REFRESH,
+        handle_refresh_symbols,
     )
 
     _LOGGER.info("Added sensors for %s", symbols)
@@ -96,9 +96,7 @@ class YahooFinanceSensor(Entity):
         """Initialize the sensor."""
         self._symbol = symbol
         self._coordinator = coordinator
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT, symbol, hass=hass
-        )
+        self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
         _LOGGER.debug("Created %s", self.entity_id)
 
     @property
@@ -196,7 +194,10 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         self.websession = async_get_clientsession(hass)
 
         super().__init__(
-            hass, _LOGGER, name=DOMAIN, update_interval=update_interval,
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=update_interval,
         )
 
     async def _async_update_data(self):
@@ -212,9 +213,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         json = None
         try:
             async with async_timeout.timeout(DEFAULT_TIMEOUT, loop=self.loop):
-                response = await self.websession.get(
-                    BASE + ",".join(self._symbols)
-                )
+                response = await self.websession.get(BASE + ",".join(self._symbols))
                 json = await response.json()
 
             _LOGGER.debug("Data = %s", json)
@@ -251,7 +250,9 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
                     "financialCurrency": item.get("financialCurrency"),
                 }
                 _LOGGER.debug(
-                    "Updated %s=%s", symbol, data[symbol]["regularMarketPrice"],
+                    "Updated %s=%s",
+                    symbol,
+                    data[symbol]["regularMarketPrice"],
                 )
 
             self.data = data
