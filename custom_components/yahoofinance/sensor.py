@@ -10,13 +10,17 @@ from datetime import timedelta
 
 import aiohttp
 import async_timeout
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+
+import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_SCAN_INTERVAL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from .const import (
     ATTR_CURRENCY_SYMBOL,
@@ -25,6 +29,7 @@ from .const import (
     ATTR_PREVIOUS_CLOSE,
     ATTRIBUTION,
     BASE,
+    CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CURRENCY_CODES,
     DEFAULT_CURRENCY,
@@ -38,12 +43,15 @@ _LOGGER = logging.getLogger(__name__)
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
 SCAN_INTERVAL = timedelta(hours=6)
 DEFAULT_TIMEOUT = 10
-
+DEFAULT_CONF_SHOW_TRENDING_ICON = False
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_SYMBOLS): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
+        vol.Optional(
+            CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
+        ): cv.boolean,
     }
 )
 
@@ -53,6 +61,10 @@ async def async_setup_platform(
 ):  # pylint: disable=unused-argument
     """Set up the Yahoo Finance sensors."""
     symbols = config.get(CONF_SYMBOLS, [])
+    show_trending_icon = config.get(
+        CONF_SHOW_TRENDING_ICON, DEFAULT_CONF_SHOW_TRENDING_ICON
+    )
+
     coordinator = YahooSymbolUpdateCoordinator(
         symbols, hass, config.get(CONF_SCAN_INTERVAL)
     )
@@ -60,7 +72,9 @@ async def async_setup_platform(
 
     sensors = []
     for symbol in symbols:
-        sensors.append(YahooFinanceSensor(coordinator, symbol, hass))
+        sensors.append(
+            YahooFinanceSensor(hass, coordinator, symbol, show_trending_icon)
+        )
 
     # The True param fetches data first time before being written to HA
     async_add_entities(sensors, True)
@@ -92,11 +106,12 @@ class YahooFinanceSensor(Entity):
     _state = None
     _symbol = None
 
-    def __init__(self, coordinator, symbol, hass) -> None:
+    def __init__(self, hass, coordinator, symbol, show_trending_icon) -> None:
         """Initialize the sensor."""
         self._symbol = symbol
         self._coordinator = coordinator
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
+        self.show_trending_icon = show_trending_icon
         _LOGGER.debug("Created %s", self.entity_id)
 
     @property
@@ -159,9 +174,19 @@ class YahooFinanceSensor(Entity):
 
         self._currency = currency.upper()
         lower_currency = self._currency.lower()
-        self._icon = "mdi:currency-" + lower_currency
-        if lower_currency in CURRENCY_CODES:
+
+        # Fall back to currency based icon if there is no _previous_close value
+        if self.show_trending_icon and not (self._previous_close is None):
+            if self._state > self._previous_close:
+                self._icon = "mdi:trending-up"
+            elif self._state < self._previous_close:
+                self._icon = "mdi:trending-down"
+            else:
+                self._icon = "mdi:trending-neutral"
+        else:
             self._icon = "mdi:currency-" + lower_currency
+
+        if lower_currency in CURRENCY_CODES:
             self._currency_symbol = CURRENCY_CODES[lower_currency]
 
     @property
