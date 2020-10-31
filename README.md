@@ -25,15 +25,21 @@ The above configuration will generate an entity with the id `yahoofinance.istnx`
 ```
 attribution: Data provided by Yahoo Finance
 currencySymbol: $
-symbol: ISTNX
 fiftyDayAverage: ...
+fiftyDayAverageChange: ...
+fiftyDayAverageChangePercent: ...
 previousClose: ...
+marketChange: ...
+marketChangePercent: ...
+symbol: ISTNX
 unit_of_measurement: USD
 friendly_name: Ivy Science & Technology Fund C
 icon: mdi:currency-usd
 ```
 
-`scan_interval` is optional and the default value is 6 hours. Trending icon (up, down or neutral) can be used instead of currency based
+`scan_interval` is optional and the default value is 6 hours.
+
+Trending icons (trending-up, trending-down or trending-neutral) can be displayed instead of currency based
 icon by specifying `show_trending_icon`.
 
 The component also exposes the service `yahoofinance.refresh_symbols` which will refresh all the data.
