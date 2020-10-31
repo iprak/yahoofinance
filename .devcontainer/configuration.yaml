@@ -10,3 +10,4 @@ sensor:
   show_trending_icon: True
   symbols:
     - ISTNX
+    - GBPUSD=X
