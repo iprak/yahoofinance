@@ -1,0 +1,10 @@
+{
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.formatting.provider": "black",
+    "python.linting.flake8Enabled": true,
+    "python.formatting.blackArgs": ["--line-length","110"],
+    "editor.formatOnPaste": false,
+    "editor.formatOnSave": true,
+    "files.trimTrailingWhitespace": true,
+}
