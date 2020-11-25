@@ -49,7 +49,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_SYMBOLS): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
-        vol.Optional(CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON): cv.boolean,
+        vol.Optional(
+            CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
+        ): cv.boolean,
     }
 )
 
@@ -59,14 +61,20 @@ async def async_setup_platform(
 ):  # pylint: disable=unused-argument
     """Set up the Yahoo Finance sensors."""
     symbols = config.get(CONF_SYMBOLS, [])
-    show_trending_icon = config.get(CONF_SHOW_TRENDING_ICON, DEFAULT_CONF_SHOW_TRENDING_ICON)
+    show_trending_icon = config.get(
+        CONF_SHOW_TRENDING_ICON, DEFAULT_CONF_SHOW_TRENDING_ICON
+    )
 
-    coordinator = YahooSymbolUpdateCoordinator(symbols, hass, config.get(CONF_SCAN_INTERVAL))
+    coordinator = YahooSymbolUpdateCoordinator(
+        symbols, hass, config.get(CONF_SCAN_INTERVAL)
+    )
     await coordinator.async_refresh()
 
     sensors = []
     for symbol in symbols:
-        sensors.append(YahooFinanceSensor(hass, coordinator, symbol, show_trending_icon))
+        sensors.append(
+            YahooFinanceSensor(hass, coordinator, symbol, show_trending_icon)
+        )
 
     # The True param fetches data first time before being written to HA
     async_add_entities(sensors, True)
@@ -167,7 +175,9 @@ class YahooFinanceSensor(Entity):
         self._state = symbol_data["regularMarketPrice"]
         self._fifty_day_average = symbol_data["fiftyDayAverage"]
         self._fifty_day_average_change = symbol_data["fiftyDayAverageChange"]
-        self._fifty_day_average_change_percent = symbol_data["fiftyDayAverageChangePercent"]
+        self._fifty_day_average_change_percent = symbol_data[
+            "fiftyDayAverageChangePercent"
+        ]
         self._previous_close = symbol_data["regularMarketPreviousClose"]
         self._market_change = symbol_data["regularMarketChange"]
         self._market_change_percent = symbol_data["regularMarketChangePercent"]
@@ -273,11 +283,17 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
                 data[symbol] = {
                     "regularMarketPrice": item.get("regularMarketPrice", 0),
                     "regularMarketChange": item.get("regularMarketChange", 0),
-                    "regularMarketChangePercent": item.get("regularMarketChangePercent", 0),
-                    "regularMarketPreviousClose": item.get("regularMarketPreviousClose", 0),
+                    "regularMarketChangePercent": item.get(
+                        "regularMarketChangePercent", 0
+                    ),
+                    "regularMarketPreviousClose": item.get(
+                        "regularMarketPreviousClose", 0
+                    ),
                     "fiftyDayAverage": item.get("fiftyDayAverage", 0),
                     "fiftyDayAverageChange": item.get("fiftyDayAverageChange", 0),
-                    "fiftyDayAverageChangePercent": item.get("fiftyDayAverageChangePercent", 0),
+                    "fiftyDayAverageChangePercent": item.get(
+                        "fiftyDayAverageChangePercent", 0
+                    ),
                     "currency": item.get("currency"),
                     "financialCurrency": item.get("financialCurrency"),
                     "shortName": item.get("shortName"),
