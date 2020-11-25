@@ -6,8 +6,8 @@ logger:
 
 
 sensor:
-  platform: yahoofinance
-  show_trending_icon: True
-  symbols:
-    - ISTNX
-    - GBPUSD=X
+  -  platform: yahoofinance
+     show_trending_icon: True
+     symbols:
+       - ISTNX
+       - GBPUSD=X

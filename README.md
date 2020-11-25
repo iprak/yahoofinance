@@ -11,12 +11,9 @@ Example:
 
 ```yaml
 sensor:
-  platform: yahoofinance
-  show_trending_icon: true
-  scan_interval:
-    hours: 4
-  symbols:
-    - ISTNX
+  - platform: yahoofinance
+    symbols:
+      - ISTNX
 
 ```
 
@@ -37,9 +34,16 @@ friendly_name: Ivy Science & Technology Fund C
 icon: mdi:currency-usd
 ```
 
-`scan_interval` is optional and the default value is 6 hours.
+## Optional settings
+* Data fetch interval can be adjusted by specifying the `scan_interval` setting whose default value is 6 hours.
+  ```yaml
+  scan_interval:
+      hours: 4
+  ```
+* Trending icons (trending-up, trending-down or trending-neutral) can be displayed instead of currency based icon by specifying `show_trending_icon`.
+  ```yaml
+    show_trending_icon: true
+  ```
 
-Trending icons (trending-up, trending-down or trending-neutral) can be displayed instead of currency based
-icon by specifying `show_trending_icon`.
 
 The component also exposes the service `yahoofinance.refresh_symbols` which will refresh all the data.
