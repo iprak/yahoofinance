@@ -1,18 +1,22 @@
 // See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
 	"context": "..",
-	"dockerFile": "Dockerfile",
-	"appPort": "8124:8123",
-	"runArgs": [
-		"-e",
-		"GIT_EDTIOR='code --wait'"
-	],
+	"image": "ludeeus/container:integration",
+	"appPort": "9123:8123",
 	"extensions": [
 		"ms-python.python",
+		"github.vscode-pull-request-github",
+		"tabnine.tabnine-vscode",
+		"ms-python.vscode-pylance",
 		"spmeesseman.vscode-taskexplorer"
+
 	],
 	"settings": {
-		"python.pythonPath": "/usr/local/bin/python",
+		"files.eol": "\n",
+		"editor.tabSize": 4,
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"python.pythonPath": "/usr/bin/python3",
+		"python.analysis.autoSearchPaths": false,
 		"python.linting.pylintEnabled": true,
 		"python.linting.enabled": true,
 		"python.formatting.provider": "black",
