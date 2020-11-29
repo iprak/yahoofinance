@@ -182,9 +182,18 @@ class YahooFinanceSensor(Entity):
         self._market_change = symbol_data["regularMarketChange"]
         self._market_change_percent = symbol_data["regularMarketChangePercent"]
 
-        currency = symbol_data["financialCurrency"]
-        if currency is None:
-            currency = symbol_data.get("currency", DEFAULT_CURRENCY)
+        # Prefer currency over financialCurrency, for foreign symbols financialCurrency
+        # can represent the remote currency. But financialCurrency can also be None.
+        financialCurrency = symbol_data["financialCurrency"]
+        currency = symbol_data["currency"]
+
+        _LOGGER.debug(
+            "%s currency=%s financialCurrency=%s",
+            self._symbol,
+            ("None" if currency is None else currency),
+            ("None" if financialCurrency is None else financialCurrency),
+        )
+        currency = symbol_data["currency"] or financialCurrency or DEFAULT_CURRENCY
 
         self._currency = currency.upper()
         lower_currency = self._currency.lower()

@@ -1,13 +1,20 @@
-default_config:
+#Limited configuration instead of default_config
+#https://github.com/home-assistant/core/tree/dev/homeassistant/components/default_config
+automation:
+frontend:
+history:
+logbook:
+
 logger:
   default: error
   logs:
-    custom_components.yahoofinance: debug
+    custom_components.yahoofinance: info
 
 
 sensor:
   -  platform: yahoofinance
      show_trending_icon: True
      symbols:
-       - ISTNX
        - GBPUSD=X
+       - IDFCBANK.BO
+       - BABA
