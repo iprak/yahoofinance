@@ -6,7 +6,7 @@ A custom component to get stock updates from Yahoo finance.
 
 This can be installed by copying all the files from `custom_components/yahoofinance/` to `<config directory>/custom_components/yahoofinance/`.
 
-Next you would define the symbols to be tracked in `configuration.yaml`
+Next you would define the symbols to be tracked in `configuration.yaml`. The symbol can also represent a financial index such as [this](https://finance.yahoo.com/world-indices/).
 
 Example:
 
