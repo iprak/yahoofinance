@@ -44,6 +44,7 @@ twoHundredDayAverageChangePercent: 0.02
 unit_of_measurement: USD
 friendly_name: ...
 icon: 'mdi:trending-up'
+trending: up
 ```
 
 ## Optional settings
