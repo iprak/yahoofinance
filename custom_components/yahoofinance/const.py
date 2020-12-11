@@ -3,6 +3,7 @@
 # Additional attributes exposed by the sensor
 ATTR_CURRENCY_SYMBOL = "currencySymbol"
 ATTR_SYMBOL = "symbol"
+ATTR_TRENDING = "trending"
 
 # JSON data pieces
 DATA_CURRENCY_SYMBOL = "currency"

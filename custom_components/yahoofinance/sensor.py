@@ -21,6 +21,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import (
     ATTR_CURRENCY_SYMBOL,
     ATTR_SYMBOL,
+    ATTR_TRENDING,
     ATTRIBUTION,
     BASE,
     CONF_SHOW_TRENDING_ICON,
@@ -198,19 +199,31 @@ class YahooFinanceSensor(Entity):
         self._currency = currency.upper()
         lower_currency = self._currency.lower()
 
-        # Fall back to currency based icon if there is no _previous_close value
-        if self._show_trending_icon and not (self._previous_close is None):
-            if self._market_price > self._previous_close:
-                self._icon = "mdi:trending-up"
-            elif self._market_price < self._previous_close:
-                self._icon = "mdi:trending-down"
+        trending_state = self.get_trending_state()
+
+        # Fall back to currency based icon if there is no trending state (based on _previous_close value)
+        if not trending_state is None:
+            self._attributes[ATTR_TRENDING] = trending_state
+
+            if self._show_trending_icon:
+                self._icon = "mdi:trending-" + trending_state
             else:
-                self._icon = "mdi:trending-neutral"
+                self._icon = "mdi:currency-" + lower_currency
         else:
             self._icon = "mdi:currency-" + lower_currency
 
         if lower_currency in CURRENCY_CODES:
             self._currency_symbol = CURRENCY_CODES[lower_currency]
+
+    def get_trending_state(self):
+        if not (self._previous_close is None):
+            if self._market_price > self._previous_close:
+                return "up"
+            elif self._market_price < self._previous_close:
+                return "down"
+            else:
+                return "neutral"
+        return None
 
     @property
     def available(self) -> bool:
