@@ -10,11 +10,11 @@ logger:
   logs:
     custom_components.yahoofinance: info
 
-sensor:
-  - platform: yahoofinance
-    show_trending_icon: True
-    symbols:
-      - GBPUSD=X
-      - IDFCBANK.BO
-      - baba
-      - ^SSMI
+yahoofinance:
+  show_trending_icon: True
+  decimal_places: 1
+  symbols:
+    - GBPUSD=X
+    - IDFCBANK.BO
+    - baba
+    - ^SSMI

@@ -43,10 +43,13 @@ STRING_DATA_KEYS = [
 
 ATTRIBUTION = "Data provided by Yahoo Finance"
 BASE = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="
+CONF_DECIMAL_PLACES = "decimal_places"
 CONF_SHOW_TRENDING_ICON = "show_trending_icon"
 CONF_SYMBOLS = "symbols"
+DEFAULT_CONF_SHOW_TRENDING_ICON = False
 DEFAULT_CURRENCY = "USD"
 DEFAULT_CURRENCY_SYMBOL = "$"
+DEFAULT_DECIMAL_PLACES = 2
 DEFAULT_ICON = "mdi:currency-usd"
 DOMAIN = "yahoofinance"
 SERVICE_REFRESH = "refresh_symbols"

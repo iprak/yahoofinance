@@ -1,29 +1,20 @@
 """
 A component which presents Yahoo Finance stock quotes.
 
-https://github.com/InduPrakash/yahoofinance
+https://github.com/iprak/yahoofinance
 """
 
-import asyncio
 import logging
-from datetime import timedelta
 
-import aiohttp
-import async_timeout
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
-from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_SCAN_INTERVAL
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     ATTR_CURRENCY_SYMBOL,
     ATTR_SYMBOL,
     ATTR_TRENDING,
     ATTRIBUTION,
-    BASE,
+    CONF_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CURRENCY_CODES,
@@ -32,70 +23,43 @@ from .const import (
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
+    DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
+    DEFAULT_DECIMAL_PLACES,
     DEFAULT_ICON,
     DOMAIN,
     NUMERIC_DATA_KEYS,
-    SERVICE_REFRESH,
-    STRING_DATA_KEYS,
 )
 
 _LOGGER = logging.getLogger(__name__)
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
-SCAN_INTERVAL = timedelta(hours=6)
-DEFAULT_TIMEOUT = 10
-DEFAULT_CONF_SHOW_TRENDING_ICON = False
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_SYMBOLS): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
-        vol.Optional(
-            CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
-        ): cv.boolean,
-    }
-)
 
 
 async def async_setup_platform(
     hass, config, async_add_entities, discovery_info=None
 ) -> None:
-    """Set up the Yahoo Finance sensors."""
-    symbols = config.get(CONF_SYMBOLS, [])
+    """Set up the Yahoo Finance sensor platform."""
 
-    # Make sure all symbols are in upper case
-    symbols = [sym.upper() for sym in symbols]
+    domain_config = hass.data[DOMAIN]["config"]
+    coordinator = hass.data[DOMAIN]["coordinator"]
+    symbols = domain_config[CONF_SYMBOLS]
 
-    show_trending_icon = config.get(
-        CONF_SHOW_TRENDING_ICON, DEFAULT_CONF_SHOW_TRENDING_ICON
-    )
-
-    coordinator = YahooSymbolUpdateCoordinator(
-        symbols, hass, config.get(CONF_SCAN_INTERVAL)
-    )
-    await coordinator.async_refresh()
+    options = {
+        CONF_SHOW_TRENDING_ICON: domain_config.get(
+            CONF_SHOW_TRENDING_ICON, DEFAULT_CONF_SHOW_TRENDING_ICON
+        ),
+        CONF_DECIMAL_PLACES: domain_config.get(
+            CONF_DECIMAL_PLACES, DEFAULT_DECIMAL_PLACES
+        ),
+    }
 
     sensors = []
     for symbol in symbols:
-        sensors.append(
-            YahooFinanceSensor(hass, coordinator, symbol, show_trending_icon)
-        )
+        sensors.append(YahooFinanceSensor(hass, coordinator, symbol, options))
 
-    # The True param fetches data first time before being written to HA
-    async_add_entities(sensors, True)
-
-    async def handle_refresh_symbols(_call):
-        """Refresh symbol data."""
-        _LOGGER.info("Processing refresh_symbols")
-        await coordinator.async_request_refresh()
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_REFRESH,
-        handle_refresh_symbols,
-    )
-
+    # The DataCoordinator already fetched initial data so we don't need to fetch it again.
+    async_add_entities(sensors, False)
     _LOGGER.info("Added sensors for %s", symbols)
 
 
@@ -107,18 +71,13 @@ class YahooFinanceSensor(Entity):
     _market_price = None
     _short_name = None
 
-    def __init__(
-        self,
-        hass,
-        coordinator,
-        symbol,
-        show_trending_icon,
-    ) -> None:
+    def __init__(self, hass, coordinator, symbol, options) -> None:
         """Initialize the sensor."""
         self._symbol = symbol
         self._coordinator = coordinator
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
-        self._show_trending_icon = show_trending_icon
+        self._show_trending_icon = options[CONF_SHOW_TRENDING_ICON]
+        self._decimal_places = options[CONF_DECIMAL_PLACES]
 
         self._attributes = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
@@ -131,6 +90,13 @@ class YahooFinanceSensor(Entity):
             self._attributes[key] = None
 
         _LOGGER.debug("Created %s", self.entity_id)
+
+    def _format(self, value):
+        """Return formatted value based on _decimal_places"""
+        if self._decimal_places < 1:
+            return value
+        else:
+            return round(value, self._decimal_places)
 
     @property
     def name(self) -> str:
@@ -148,7 +114,7 @@ class YahooFinanceSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._market_price
+        return self._format(self._market_price)
 
     @property
     def unit_of_measurement(self) -> str:
@@ -180,7 +146,7 @@ class YahooFinanceSensor(Entity):
         self._previous_close = symbol_data[DATA_REGULAR_MARKET_PREVIOUS_CLOSE]
 
         for key in NUMERIC_DATA_KEYS:
-            self._attributes[key] = symbol_data[key]
+            self._attributes[key] = self._format(symbol_data[key])
 
         # Prefer currency over financialCurrency, for foreign symbols financialCurrency
         # can represent the remote currency. But financialCurrency can also be None.
@@ -242,77 +208,3 @@ class YahooFinanceSensor(Entity):
     async def async_update(self) -> None:
         """Update symbol data."""
         await self._coordinator.async_request_refresh()
-
-
-class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage Yahoo finance data update."""
-
-    def __init__(self, symbols, hass, update_interval) -> None:
-        """Initialize."""
-        self._symbols = symbols
-        self.data = None
-        self.loop = hass.loop
-        self.websession = async_get_clientsession(hass)
-
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=DOMAIN,
-            update_interval=update_interval,
-        )
-
-    async def _async_update_data(self):
-        """Fetch the latest data from the source."""
-        try:
-            await self.update()
-        except () as error:
-            raise UpdateFailed(error)
-        return self.data
-
-    async def get_json(self):
-        """Get the JSON data."""
-        json = None
-        try:
-            async with async_timeout.timeout(DEFAULT_TIMEOUT, loop=self.loop):
-                response = await self.websession.get(BASE + ",".join(self._symbols))
-                json = await response.json()
-
-            _LOGGER.debug("Data = %s", json)
-            self.last_update_success = True
-        except asyncio.TimeoutError:
-            _LOGGER.error("Timed out getting data")
-            self.last_update_success = False
-        except aiohttp.ClientError as exception:
-            _LOGGER.error("Error getting data: %s", exception)
-            self.last_update_success = False
-
-        return json
-
-    async def update(self):
-        """Update data."""
-        json = await self.get_json()
-        if json is not None:
-            if "error" in json:
-                raise ValueError(json["error"]["info"])
-
-            result = json["quoteResponse"]["result"]
-            data = {}
-
-            for item in result:
-                symbol = item["symbol"]
-
-                # Return data pieces which we care about, use 0 for missing numeric values
-                data[symbol] = {}
-                for key in NUMERIC_DATA_KEYS:
-                    data[symbol][key] = item.get(key, 0)
-                for key in STRING_DATA_KEYS:
-                    data[symbol][key] = item.get(key)
-
-                _LOGGER.debug(
-                    "Updated %s=%s",
-                    symbol,
-                    data[symbol]["regularMarketPrice"],
-                )
-
-            self.data = data
-            _LOGGER.info("Data updated")
