@@ -5,17 +5,16 @@ https://github.com/iprak/yahoofinance
 """
 
 import asyncio
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 import aiohttp
 import async_timeout
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -27,13 +26,15 @@ from .const import (
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_DECIMAL_PLACES,
     DOMAIN,
+    HASS_DATA_CONFIG,
+    HASS_DATA_COORDINATOR,
     NUMERIC_DATA_KEYS,
     SERVICE_REFRESH,
     STRING_DATA_KEYS,
 )
 
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(hours=6)
+DEFAULT_SCAN_INTERVAL = timedelta(hours=6)
 WEBSESSION_TIMEOUT = 10
 
 CONFIG_SCHEMA = vol.Schema(
@@ -41,7 +42,9 @@ CONFIG_SCHEMA = vol.Schema(
         DOMAIN: vol.Schema(
             {
                 vol.Required(CONF_SYMBOLS): vol.All(cv.ensure_list, [cv.string]),
-                vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+                ): cv.time_period,
                 vol.Optional(
                     CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
                 ): cv.boolean,
@@ -51,8 +54,7 @@ CONFIG_SCHEMA = vol.Schema(
             }
         )
     },
-    # The full HA configurations gets passed to `async_setup` so we need to allow
-    # extra keys.
+    # The complete HA configuration is passed down to`async_setup`, allow the extra keys.
     extra=vol.ALLOW_EXTRA,
 )
 
@@ -63,18 +65,20 @@ async def async_setup(hass, config) -> bool:
     domain_config = config[DOMAIN]
     symbols = domain_config.get(CONF_SYMBOLS, [])
 
-    # Make sure all symbols are in upper case
+    # Convert all symbols to upper case and save them back
     symbols = [sym.upper() for sym in symbols]
     domain_config[CONF_SYMBOLS] = symbols
 
     coordinator = YahooSymbolUpdateCoordinator(
         symbols, hass, domain_config.get(CONF_SCAN_INTERVAL)
     )
+    # Refresh coordinator to get initial symbol data
     await coordinator.async_refresh()
 
+    # Pass down the coordinator and config to platforms.
     hass.data[DOMAIN] = {
-        "coordinator": coordinator,
-        "config": domain_config,
+        HASS_DATA_COORDINATOR: coordinator,
+        HASS_DATA_CONFIG: domain_config,
     }
 
     async def handle_refresh_symbols(_call):

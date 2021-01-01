@@ -23,12 +23,12 @@ from .const import (
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
-    DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
-    DEFAULT_DECIMAL_PLACES,
     DEFAULT_ICON,
     DOMAIN,
+    HASS_DATA_CONFIG,
+    HASS_DATA_COORDINATOR,
     NUMERIC_DATA_KEYS,
 )
 
@@ -36,27 +36,21 @@ _LOGGER = logging.getLogger(__name__)
 ENTITY_ID_FORMAT = DOMAIN + ".{}"
 
 
-async def async_setup_platform(
-    hass, config, async_add_entities, discovery_info=None
-) -> None:
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Yahoo Finance sensor platform."""
 
-    domain_config = hass.data[DOMAIN]["config"]
-    coordinator = hass.data[DOMAIN]["coordinator"]
+    coordinator = hass.data[DOMAIN][HASS_DATA_COORDINATOR]
+    domain_config = hass.data[DOMAIN][HASS_DATA_CONFIG]
     symbols = domain_config[CONF_SYMBOLS]
 
     options = {
-        CONF_SHOW_TRENDING_ICON: domain_config.get(
-            CONF_SHOW_TRENDING_ICON, DEFAULT_CONF_SHOW_TRENDING_ICON
-        ),
-        CONF_DECIMAL_PLACES: domain_config.get(
-            CONF_DECIMAL_PLACES, DEFAULT_DECIMAL_PLACES
-        ),
+        CONF_SHOW_TRENDING_ICON: domain_config[CONF_SHOW_TRENDING_ICON],
+        CONF_DECIMAL_PLACES: domain_config[CONF_DECIMAL_PLACES],
     }
 
-    sensors = []
-    for symbol in symbols:
-        sensors.append(YahooFinanceSensor(hass, coordinator, symbol, options))
+    sensors = [
+        YahooFinanceSensor(hass, coordinator, symbol, options) for symbol in symbols
+    ]
 
     # The DataCoordinator already fetched initial data so we don't need to fetch it again.
     async_add_entities(sensors, False)
@@ -177,7 +171,6 @@ class YahooFinanceSensor(Entity):
             else:
                 self._icon = "mdi:currency-" + lower_currency
         else:
-
             self._icon = "mdi:currency-" + lower_currency
 
         # If this one of the known currencies, then include the correct currency symbol.

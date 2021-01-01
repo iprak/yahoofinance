@@ -5,6 +5,10 @@ ATTR_CURRENCY_SYMBOL = "currencySymbol"
 ATTR_SYMBOL = "symbol"
 ATTR_TRENDING = "trending"
 
+# Hass data
+HASS_DATA_CONFIG = "config"
+HASS_DATA_COORDINATOR = "coordinator"
+
 # JSON data pieces
 DATA_CURRENCY_SYMBOL = "currency"
 DATA_FINANCIAL_CURRENCY = "financialCurrency"
