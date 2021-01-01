@@ -5,16 +5,17 @@ https://github.com/iprak/yahoofinance
 """
 
 import asyncio
-import logging
 from datetime import timedelta
+import logging
 
 import aiohttp
 import async_timeout
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -113,7 +114,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         try:
             await self.update()
         except () as error:
-            raise UpdateFailed(error)
+            raise UpdateFailed from error
         return self.data
 
     async def get_json(self):

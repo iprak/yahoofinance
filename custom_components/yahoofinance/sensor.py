@@ -6,7 +6,7 @@ https://github.com/iprak/yahoofinance
 
 import logging
 
-from homeassistant.const import ATTR_ATTRIBUTION, CONF_SCAN_INTERVAL
+from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
 
 from .const import (
@@ -78,6 +78,7 @@ class YahooFinanceSensor(Entity):
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
         self._show_trending_icon = options[CONF_SHOW_TRENDING_ICON]
         self._decimal_places = options[CONF_DECIMAL_PLACES]
+        self._previous_close = None
 
         self._attributes = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
@@ -95,8 +96,8 @@ class YahooFinanceSensor(Entity):
         """Return formatted value based on _decimal_places"""
         if self._decimal_places < 1:
             return value
-        else:
-            return round(value, self._decimal_places)
+
+        return round(value, self._decimal_places)
 
     @property
     def name(self) -> str:
@@ -150,17 +151,17 @@ class YahooFinanceSensor(Entity):
 
         # Prefer currency over financialCurrency, for foreign symbols financialCurrency
         # can represent the remote currency. But financialCurrency can also be None.
-        financialCurrency = symbol_data[DATA_FINANCIAL_CURRENCY]
+        financial_currency = symbol_data[DATA_FINANCIAL_CURRENCY]
         currency = symbol_data[DATA_CURRENCY_SYMBOL]
 
         _LOGGER.debug(
             "%s currency=%s financialCurrency=%s",
             self._symbol,
             ("None" if currency is None else currency),
-            ("None" if financialCurrency is None else financialCurrency),
+            ("None" if financial_currency is None else financial_currency),
         )
 
-        currency = currency or financialCurrency or DEFAULT_CURRENCY
+        currency = currency or financial_currency or DEFAULT_CURRENCY
 
         self._currency = currency.upper()
         lower_currency = self._currency.lower()
@@ -176,19 +177,22 @@ class YahooFinanceSensor(Entity):
             else:
                 self._icon = "mdi:currency-" + lower_currency
         else:
+
             self._icon = "mdi:currency-" + lower_currency
 
+        # If this one of the known currencies, then include the correct currency symbol.
         if lower_currency in CURRENCY_CODES:
-            self._currency_symbol = CURRENCY_CODES[lower_currency]
+            self._attributes[ATTR_CURRENCY_SYMBOL] = CURRENCY_CODES[lower_currency]
 
     def get_trending_state(self):
-        if not (self._previous_close is None):
+        """Return the trending state for the symbol."""
+        if not self._previous_close is None:
             if self._market_price > self._previous_close:
                 return "up"
-            elif self._market_price < self._previous_close:
+            if self._market_price < self._previous_close:
                 return "down"
-            else:
-                return "neutral"
+
+            return "neutral"
         return None
 
     @property
