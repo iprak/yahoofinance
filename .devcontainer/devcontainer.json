@@ -3,13 +3,12 @@
 	"context": "..",
 	"image": "ludeeus/container:integration",
 	"appPort": "9123:8123",
+	"postCreateCommand": "python -m pip install --upgrade flake8 isort black",
 	"extensions": [
 		"ms-python.python",
 		"github.vscode-pull-request-github",
-		"tabnine.tabnine-vscode",
 		"ms-python.vscode-pylance",
 		"spmeesseman.vscode-taskexplorer"
-
 	],
 	"settings": {
 		"files.eol": "\n",

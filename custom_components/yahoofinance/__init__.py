@@ -5,24 +5,24 @@ https://github.com/iprak/yahoofinance
 """
 
 import asyncio
-import logging
 from datetime import timedelta
+import logging
 
 import aiohttp
 import async_timeout
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
-from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+import voluptuous as vol
 
 from .const import (
     BASE,
     CONF_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
+    DATA_REGULAR_MARKET_PRICE,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_DECIMAL_PLACES,
     DOMAIN,
@@ -62,7 +62,7 @@ CONFIG_SCHEMA = vol.Schema(
 async def async_setup(hass, config) -> bool:
     """Set up the Yahoo Finance sensors."""
 
-    domain_config = config[DOMAIN]
+    domain_config = config.get(DOMAIN, {})
     symbols = domain_config.get(CONF_SYMBOLS, [])
 
     # Convert all symbols to upper case and save them back
@@ -98,6 +98,16 @@ async def async_setup(hass, config) -> bool:
 
 class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage Yahoo finance data update."""
+
+    @staticmethod
+    def parse_symbol_data(symbol_data):
+        """Return data pieces which we care about, use 0 for missing numeric values."""
+        data = {}
+        for key in NUMERIC_DATA_KEYS:
+            data[key] = symbol_data.get(key, 0)
+        for key in STRING_DATA_KEYS:
+            data[key] = symbol_data.get(key)
+        return data
 
     def __init__(self, symbols, hass, update_interval) -> None:
         """Initialize."""
@@ -150,20 +160,14 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             result = json["quoteResponse"]["result"]
             data = {}
 
-            for item in result:
-                symbol = item["symbol"]
-
-                # Return data pieces which we care about, use 0 for missing numeric values
-                data[symbol] = {}
-                for key in NUMERIC_DATA_KEYS:
-                    data[symbol][key] = item.get(key, 0)
-                for key in STRING_DATA_KEYS:
-                    data[symbol][key] = item.get(key)
+            for symbol_data in result:
+                symbol = symbol_data["symbol"]
+                data[symbol] = self.parse_symbol_data(symbol_data)
 
                 _LOGGER.debug(
                     "Updated %s=%s",
                     symbol,
-                    data[symbol]["regularMarketPrice"],
+                    data[symbol][DATA_REGULAR_MARKET_PRICE],
                 )
 
             self.data = data

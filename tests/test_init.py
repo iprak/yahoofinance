@@ -1,60 +1,62 @@
 """Tests for Yahoo Finance component."""
-# import json
-import os
 
-# import homeassistant
-# import pytest
-from custom_components.yahoofinance.const import DOMAIN
+from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock, patch
+import pytest
+from pytest_homeassistant_custom_component.async_mock import patch
 
-VALID_CONFIG = {
-    DOMAIN: {
-        "symbols": ["xyz"],
-        "decimal_places": 0,
-    }
-}
-
-
-def load_fixture(filename):
-    """Load a fixture."""
-    # path = os.path.join(os.path.dirname(__file__), "fixtures", filename)
-    path = os.path.join(os.path.dirname(__file__), filename)
-    with open(path, encoding="utf-8") as fptr:
-        return fptr.read()
+from custom_components.yahoofinance import DEFAULT_SCAN_INTERVAL
+from custom_components.yahoofinance.const import (
+    CONF_DECIMAL_PLACES,
+    CONF_SHOW_TRENDING_ICON,
+    CONF_SYMBOLS,
+    DEFAULT_CONF_SHOW_TRENDING_ICON,
+    DEFAULT_DECIMAL_PLACES,
+    DOMAIN,
+    HASS_DATA_CONFIG,
+    HASS_DATA_COORDINATOR,
+)
 
 
-# @pytest.fixture
-async def setup_sensor(hass):
+@pytest.mark.parametrize(
+    "test_config,expected",
+    [
+        (
+            {DOMAIN: {CONF_SYMBOLS: ["xyz"]}},
+            {
+                CONF_SYMBOLS: ["XYZ"],
+                CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
+                CONF_DECIMAL_PLACES: DEFAULT_DECIMAL_PLACES,
+                CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
+            },
+        ),
+        (
+            {DOMAIN: {CONF_SYMBOLS: ["xyz"], CONF_DECIMAL_PLACES: 3}},
+            {
+                CONF_SYMBOLS: ["XYZ"],
+                CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
+                CONF_DECIMAL_PLACES: 3,
+                CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
+            },
+        ),
+    ],
+)
+async def test_setup(hass, test_config, expected):
     """Set up sensor."""
     #       return_value=json.loads(load_fixture("yahoofinance.json")),
 
-    print("setup_sensor")
-    print(DOMAIN)
-
     with patch(
-        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
-    ) as mock_coordinator:
-        instance = Mock()
-        instance.update.return_value = AsyncMock()
-        mock_coordinator.return_value = instance
+        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.update"
+    ), patch(
+        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.async_refresh"
+    ):
+        assert await async_setup_component(hass, DOMAIN, test_config) == True
 
-        assert await async_setup_component(hass, DOMAIN, VALID_CONFIG) == True
-        await hass.async_block_till_done()
+    await hass.async_block_till_done()
+    assert expected == hass.data[DOMAIN][HASS_DATA_CONFIG]
 
-    expected = {"symbols": ["XYZ"]}
-    assert expected == hass.data[DOMAIN]["config"]
-
-    expected = {}
-    assert expected == hass.data[DOMAIN]["config"]
-
-
-# async def test_setup(hass, setup_sensor):
-#     """Test the setup with custom settings."""
-#     state = hass.states.get("sensor.ethereum")
-#     assert state is not None
-
-#     assert state.name == "Ethereum"
-#     assert state.state == "493.455"
-#     assert state.attributes.get("symbol") == "ETH"
-#     assert state.attributes.get("unit_of_measurement") == "EUR"
+    # Verify that update_interval is passed correctly to DataCoordinator
+    assert (
+        expected[CONF_SCAN_INTERVAL]
+        == hass.data[DOMAIN][HASS_DATA_COORDINATOR].update_interval
+    )

@@ -88,8 +88,13 @@ class YahooFinanceSensor(Entity):
 
     def _format(self, value):
         """Return formatted value based on _decimal_places"""
-        if self._decimal_places < 1:
+        if value is None:
+            return None
+
+        if self._decimal_places < 0:
             return value
+        if self._decimal_places == 0:
+            return int(value)
 
         return round(value, self._decimal_places)
 
@@ -128,6 +133,7 @@ class YahooFinanceSensor(Entity):
 
     def fetch_data(self) -> None:
         """Fetch data and populate local fields."""
+
         data = self._coordinator.data
         if data is None:
             return
@@ -167,11 +173,11 @@ class YahooFinanceSensor(Entity):
             self._attributes[ATTR_TRENDING] = trending_state
 
             if self._show_trending_icon:
-                self._icon = "mdi:trending-" + trending_state
+                self._icon = f"mdi:trending-{trending_state}"
             else:
-                self._icon = "mdi:currency-" + lower_currency
+                self._icon = f"mdi:currency-{lower_currency}"
         else:
-            self._icon = "mdi:currency-" + lower_currency
+            self._icon = f"mdi:currency-{lower_currency}"
 
         # If this one of the known currencies, then include the correct currency symbol.
         if lower_currency in CURRENCY_CODES:
