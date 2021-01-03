@@ -53,7 +53,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     ]
 
     async_add_entities(sensors, update_before_add=False)
-    _LOGGER.info("Added sensors for %s", symbols)
+    _LOGGER.info("Platform added sensors for %s", symbols)
 
 
 class YahooFinanceSensor(Entity):
@@ -83,19 +83,8 @@ class YahooFinanceSensor(Entity):
         for key in NUMERIC_DATA_KEYS:
             self._attributes[key] = None
 
+        # Delay initial data population to `available` which is called from `_async_write_ha_state`
         _LOGGER.debug("Created %s", self.entity_id)
-
-    def _round(self, value):
-        """Return formatted value based on _decimal_places"""
-        if value is None:
-            return None
-
-        if self._decimal_places < 0:
-            return value
-        if self._decimal_places == 0:
-            return int(value)
-
-        return round(value, self._decimal_places)
 
     @property
     def name(self) -> str:
@@ -130,15 +119,29 @@ class YahooFinanceSensor(Entity):
         """Return the icon to use in the frontend, if any."""
         return self._icon
 
-    def fetch_data(self) -> None:
-        """Fetch data and populate local fields."""
+    def _round(self, value):
+        """Return formatted value based on decimal_places"""
+        if value is None:
+            return None
+
+        if self._decimal_places < 0:
+            return value
+        if self._decimal_places == 0:
+            return int(value)
+
+        return round(value, self._decimal_places)
+
+    def _update_data(self) -> None:
+        """Update local fields."""
 
         data = self._coordinator.data
         if data is None:
+            _LOGGER.debug("Coordinator data is None")
             return
 
         symbol_data = data.get(self._symbol)
         if symbol_data is None:
+            _LOGGER.debug("Symbol data is None")
             return
 
         self._short_name = symbol_data[DATA_SHORT_NAME]
@@ -154,7 +157,7 @@ class YahooFinanceSensor(Entity):
         currency = symbol_data[DATA_CURRENCY_SYMBOL]
 
         _LOGGER.debug(
-            "%s currency=%s financialCurrency=%s",
+            "Updated %s (currency=%s, financialCurrency=%s)",
             self._symbol,
             ("None" if currency is None else currency),
             ("None" if financial_currency is None else financial_currency),
@@ -165,7 +168,7 @@ class YahooFinanceSensor(Entity):
         self._currency = currency.upper()
         lower_currency = self._currency.lower()
 
-        trending_state = self.get_trending_state()
+        trending_state = self._calc_trending_state()
 
         # Fall back to currency based icon if there is no trending state
         if not trending_state is None:
@@ -182,21 +185,22 @@ class YahooFinanceSensor(Entity):
         if lower_currency in CURRENCY_CODES:
             self._attributes[ATTR_CURRENCY_SYMBOL] = CURRENCY_CODES[lower_currency]
 
-    def get_trending_state(self):
+    def _calc_trending_state(self):
         """Return the trending state for the symbol."""
-        if not self._previous_close is None:
-            if self._market_price > self._previous_close:
-                return "up"
-            if self._market_price < self._previous_close:
-                return "down"
+        if self._market_price is None or self._previous_close is None:
+            return None
 
-            return "neutral"
-        return None
+        if self._market_price > self._previous_close:
+            return "up"
+        if self._market_price < self._previous_close:
+            return "down"
+
+        return "neutral"
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        self.fetch_data()
+        self._update_data()
         return self._coordinator.last_update_success
 
     async def async_added_to_hass(self) -> None:

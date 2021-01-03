@@ -20,6 +20,7 @@ from custom_components.yahoofinance.const import (
 )
 
 SAMPLE_VALID_CONFIG = {DOMAIN: {CONF_SYMBOLS: ["BABA"]}}
+YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 
 
 @pytest.mark.parametrize(
@@ -59,17 +60,40 @@ async def test_setup_refreshes_data_coordinator_and_loads_platform(
     with patch(
         "homeassistant.helpers.discovery.async_load_platform"
     ) as mock_async_load_platform, patch(
-        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.async_refresh",
-        AsyncMock(return_value=None),
+        f"{YSUC}.async_refresh", AsyncMock(return_value=None)
     ) as mock_coordinator_async_refresh:
 
         assert await async_setup_component(hass, DOMAIN, config) is True
         await hass.async_block_till_done()
 
-        assert mock_async_load_platform.call_count == 1
         assert mock_coordinator_async_refresh.call_count == 1
+        assert mock_async_load_platform.call_count == 1
 
         assert expected_config == hass.data[DOMAIN][HASS_DATA_CONFIG]
+
+
+async def test_setup_optionally_requests_coordinator_refresh(hass):
+    """Component setup requets data coordinator refresh if it failed to load data."""
+
+    # Mock `last_update_success` to be False which results in a call to `async_request_refresh`
+
+    with patch(
+        "homeassistant.helpers.discovery.async_load_platform"
+    ) as mock_async_load_platform, patch(YSUC) as mock_coordinator:
+
+        mock_instance = Mock()
+        mock_instance.async_refresh = AsyncMock(return_value=None)
+        mock_instance.async_request_refresh = AsyncMock(return_value=None)
+        mock_instance.last_update_success = False
+
+        mock_coordinator.return_value = mock_instance
+
+        assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
+        await hass.async_block_till_done()
+
+        assert mock_instance.async_refresh.call_count == 1
+        assert mock_instance.async_request_refresh.call_count == 1
+        assert mock_async_load_platform.call_count == 1
 
 
 async def test_setup_adds_sensor_to_hass(hass, mock_json):
@@ -78,8 +102,7 @@ async def test_setup_adds_sensor_to_hass(hass, mock_json):
     with patch(
         "custom_components.yahoofinance.sensor.YahooFinanceSensor.async_added_to_hass"
     ) as mock_async_added_to_hass, patch(
-        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.get_json",
-        AsyncMock(return_value=mock_json),
+        f"{YSUC}.get_json", AsyncMock(return_value=mock_json)
     ):
         assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
         await hass.async_block_till_done()
@@ -90,12 +113,8 @@ async def test_setup_adds_sensor_to_hass(hass, mock_json):
 async def test_setup_adds_listener_to_coordinator(hass, mock_json):
     """Component setup adds listener to data coordinator."""
 
-    with patch(
-        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.async_add_listener",
-        Mock(),
-    ) as mock_async_add_listener, patch(
-        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.get_json",
-        AsyncMock(return_value=mock_json),
+    with patch(f"{YSUC}.async_add_listener", Mock()) as mock_async_add_listener, patch(
+        f"{YSUC}.get_json", AsyncMock(return_value=mock_json)
     ):
         assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
         await hass.async_block_till_done()
@@ -106,12 +125,8 @@ async def test_setup_adds_listener_to_coordinator(hass, mock_json):
 async def test_refresh_service(hass, mock_json):
     """Test service callback."""
 
-    with patch(
-        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.get_json",
-        AsyncMock(return_value=mock_json),
-    ), patch(
-        "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.async_request_refresh",
-        AsyncMock(return_value=None),
+    with patch(f"{YSUC}.get_json", AsyncMock(return_value=mock_json)), patch(
+        f"{YSUC}.async_request_refresh", AsyncMock(return_value=None)
     ) as mock_async_request_refresh:
         assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
 

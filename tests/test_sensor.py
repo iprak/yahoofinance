@@ -42,7 +42,7 @@ def build_mock_symbol_data(symbol, market_price):
 
 
 def build_mock_coordinator(hass, last_update_success, symbol, market_price):
-    """Fixture to mock the update data coordinator."""
+    """Build a mock data coordinator."""
     coordinator = Mock(
         data={symbol: build_mock_symbol_data(symbol, market_price)},
         hass=hass,
@@ -56,7 +56,7 @@ def build_mock_coordinator(hass, last_update_success, symbol, market_price):
     "last_update_success,symbol,market_price,expected_market_price",
     [(True, "XYZ", 12, 12), (False, "^ABC", 0.1221, 0.12), (True, "BOB", 6.156, 6.16)],
 )
-def test_sensor_data(
+def test_sensor_creation(
     hass, last_update_success, symbol, market_price, expected_market_price
 ):
     """Test sensor status based on the expected_market_price."""
@@ -99,12 +99,12 @@ def test_sensor_data(
         (12.12345, -1, 12.12345),
     ],
 )
-def test_sensor_state_rounding(
+def test_sensor_decimal_placs(
     hass, market_price, decimal_places, expected_market_price
 ):
     """Tests numeric value rounding."""
 
-    symbol = "ABC"
+    symbol = "XYZ"
     mock_coordinator = build_mock_coordinator(hass, True, symbol, market_price)
 
     config = copy.deepcopy(SAMPLE_VALID_CONFIG)
@@ -123,7 +123,8 @@ def test_sensor_state_rounding(
 def test_sensor_data_when_coordinator_is_missing_symbol_data(
     hass, last_update_success, symbol, market_price
 ):
-    """Test sensor status when data corrdinator does not have data for that symbol."""
+    """Test sensor status when data coordinator does not have data for that symbol."""
+
     mock_coordinator = build_mock_coordinator(
         hass, last_update_success, symbol, market_price
     )
@@ -143,26 +144,29 @@ def test_sensor_data_when_coordinator_is_missing_symbol_data(
     assert sensor.name == symbol_to_test
 
 
-def test_sensor_data_when_corrdinator_returns_none(hass):
-    """Test sensor status when data corrdinator does not have any data."""
+def test_sensor_data_when_coordinator_returns_none(hass):
+    """Test sensor status when data coordinator does not have any data."""
 
     symbol = "XYZ"
-    mock_coordinator = build_mock_coordinator(hass, True, symbol, 12)
+    mock_coordinator = Mock(
+        data=None,
+        hass=hass,
+        last_update_success=False,
+    )
 
-    # Force coordinator data to be None
-    mock_coordinator.data = None
-
-    config = copy.deepcopy(SAMPLE_VALID_CONFIG)
-    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, config)
+    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, SAMPLE_VALID_CONFIG)
 
     # Accessing `available` triggers data population
-    assert sensor.available is True
+    assert sensor.available is False
 
     assert sensor.state is None
+    # Since we do not have data so the name will be the symbol
+    assert sensor.name == symbol
 
 
-async def test_update_calls_coordinator(hass):
+async def test_sensor_update_calls_coordinator(hass):
     """Test sensor data update."""
+
     symbol = "XYZ"
     mock_coordinator = build_mock_coordinator(hass, True, symbol, None)
     mock_coordinator.async_request_refresh = AsyncMock(return_value=None)
@@ -211,7 +215,7 @@ def test_sensor_trend(
         assert sensor.icon == f"mdi:currency-{lower_currency}"
 
 
-def test_sensor_trending_state_is_not_populate_if_previous_closing_not_populated(hass):
+def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(hass):
     """The trending state is None if _previous_close is None for some reason."""
 
     symbol = "XYZ"
@@ -242,7 +246,9 @@ async def test_data_from_json(hass, mock_json):
     symbol = "BABA"
     coordinator = YahooSymbolUpdateCoordinator([symbol], hass, DEFAULT_SCAN_INTERVAL)
     coordinator.get_json = AsyncMock(return_value=mock_json)
-    await coordinator.update()
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
 
     sensor = YahooFinanceSensor(hass, coordinator, symbol, SAMPLE_VALID_CONFIG)
 

@@ -27,15 +27,21 @@ TEST_SYMBOL = "BABA"
 )
 async def test_incomplete_json(hass, parsed_json, message):
     """Existing data is not updated if JSON is invalid."""
+
+    print(message)
     coordinator = YahooSymbolUpdateCoordinator(None, hass, DEFAULT_SCAN_INTERVAL)
     coordinator.get_json = AsyncMock(return_value=parsed_json)
 
     existing_data = {TEST_SYMBOL: {DATA_REGULAR_MARKET_PRICE: random.random()}}
     coordinator.data = existing_data
-    print(message)
 
-    assert await coordinator.update()
+    # last_update_success is initially True
+    assert coordinator.last_update_success is True
 
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    # Data was invalid, existing data was left unchanged and last_update_success becomes False
     assert coordinator.data is existing_data
     assert coordinator.last_update_success is False
 
@@ -58,7 +64,8 @@ async def test_json_download_failure(hass, raised_exception):
     existing_data = {TEST_SYMBOL: {DATA_REGULAR_MARKET_PRICE: random.random()}}
     coordinator.data = existing_data
 
-    assert await coordinator.update()
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
 
     assert coordinator.data is existing_data
     assert coordinator.last_update_success is False
@@ -76,7 +83,8 @@ async def test_successful_data_parsing(hass, mock_json):
 
     coordinator.websession.get = AsyncMock(return_value=mock_response)
 
-    await coordinator.update()
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
 
     assert coordinator.data is not None
     assert TEST_SYMBOL in coordinator.data

@@ -14,7 +14,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import discovery
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import voluptuous as vol
 
 from .const import (
@@ -35,7 +35,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_SCAN_INTERVAL = timedelta(hours=6)
-WEBSESSION_TIMEOUT = 10
+WEBSESSION_TIMEOUT = 15
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -72,7 +72,9 @@ async def async_setup(hass, config) -> bool:
     coordinator = YahooSymbolUpdateCoordinator(
         symbols, hass, domain_config.get(CONF_SCAN_INTERVAL)
     )
+
     # Refresh coordinator to get initial symbol data
+    _LOGGER.debug("Requesting initial data from coordinator")
     await coordinator.async_refresh()
 
     # Pass down the coordinator and config to platforms.
@@ -92,9 +94,14 @@ async def async_setup(hass, config) -> bool:
         handle_refresh_symbols,
     )
 
+    if not coordinator.last_update_success:
+        _LOGGER.debug("Coordinator did not report any data, requesting async_refresh")
+        hass.async_create_task(coordinator.async_request_refresh())
+
     hass.async_create_task(
         discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
     )
+
     return True
 
 
@@ -121,8 +128,8 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
-            name=DOMAIN,
-            update_method=self.update,
+            name="YahooSymbolUpdateCoordinator",
+            update_method=self._update,
             update_interval=update_interval,
         )
 
@@ -130,48 +137,42 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         """Get the JSON data."""
         json = None
 
-        try:
-            async with async_timeout.timeout(WEBSESSION_TIMEOUT, loop=self.loop):
-                response = await self.websession.get(BASE + ",".join(self._symbols))
-                json = await response.json()
+        async with async_timeout.timeout(WEBSESSION_TIMEOUT, loop=self.loop):
+            response = await self.websession.get(BASE + ",".join(self._symbols))
+            json = await response.json()
 
-            _LOGGER.debug("Data = %s", json)
-        except asyncio.TimeoutError as exception:
-            _LOGGER.error("Timed out getting data")
-        except Exception as exception:  # pylint: disable=broad-except
-            _LOGGER.error("Error getting data: %s", exception)
-
+        _LOGGER.debug("Data = %s", json)
         return json
 
-    async def update(self):
-        """Return updated data. No update is done if the JSON is invalid."""
+    async def _update(self):
+        """
+        Return updated data if new JSON is valid.
 
-        self.last_update_success = False
+        Don't catch any exceptions, they get properly handled in the caller
+        (DataUpdateCoordinator.async_refresh) which also updates last_update_success.
+        UpdateFailed is raised if JSON is invalid.
+        """
+
         json = await self.get_json()
 
         if json is None:
-            _LOGGER.error("Failed to get download data")
-            return self.data
+            raise UpdateFailed("No data received")
 
         if not "quoteResponse" in json:
-            _LOGGER.error("Invalid data: 'quoteResponse' not found.")
-            return self.data
+            raise UpdateFailed("Data invalid, 'quoteResponse' not found.")
 
         quoteResponse = json["quoteResponse"]  # pylint: disable=invalid-name
 
         if "error" in quoteResponse:
             if quoteResponse["error"] is not None:
-                _LOGGER.error("Error: %s", quoteResponse["error"])
-                return self.data
+                raise UpdateFailed(quoteResponse["error"])
 
         if not "result" in quoteResponse:
-            _LOGGER.error("Invalid data: no 'result' found")
-            return self.data
+            raise UpdateFailed("Data invalid, no 'result' found")
 
         result = quoteResponse["result"]
         if result is None:
-            _LOGGER.error("Invalid data: 'result' is None")
-            return self.data
+            raise UpdateFailed("Data invalid, 'result' is None")
 
         data = {}
         for symbol_data in result:
@@ -184,7 +185,5 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
                 data[symbol][DATA_REGULAR_MARKET_PRICE],
             )
 
-        self.data = data
-        self.last_update_success = True
         _LOGGER.info("Data updated")
         return data
