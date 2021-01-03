@@ -11,9 +11,9 @@ import logging
 import aiohttp
 import async_timeout
 from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.helpers import discovery
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import voluptuous as vol
 
@@ -92,7 +92,9 @@ async def async_setup(hass, config) -> bool:
         handle_refresh_symbols,
     )
 
-    hass.async_create_task(async_load_platform(hass, "sensor", DOMAIN, {}, config))
+    hass.async_create_task(
+        discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+    )
     return True
 
 
@@ -120,55 +122,63 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
+            update_method=self.update,
             update_interval=update_interval,
         )
-
-    async def _async_update_data(self):
-        """Fetch the latest data from the source."""
-        try:
-            await self.update()
-        except () as error:
-            raise UpdateFailed from error
-        return self.data
 
     async def get_json(self):
         """Get the JSON data."""
         json = None
+
         try:
             async with async_timeout.timeout(WEBSESSION_TIMEOUT, loop=self.loop):
                 response = await self.websession.get(BASE + ",".join(self._symbols))
                 json = await response.json()
 
             _LOGGER.debug("Data = %s", json)
-            self.last_update_success = True
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as exception:
             _LOGGER.error("Timed out getting data")
-            self.last_update_success = False
-        except aiohttp.ClientError as exception:
+        except Exception as exception:  # pylint: disable=broad-except
             _LOGGER.error("Error getting data: %s", exception)
-            self.last_update_success = False
 
         return json
 
     async def update(self):
-        """Update data."""
+        """Update data. Data is not updated if JSON result is invalid."""
+
+        self.last_update_success = False
         json = await self.get_json()
-        if json is not None:
-            if "error" in json:
-                raise ValueError(json["error"]["info"])
 
-            result = json["quoteResponse"]["result"]
-            data = {}
+        if json is None:
+            raise UpdateFailed("Failed to get data")
 
-            for symbol_data in result:
-                symbol = symbol_data["symbol"]
-                data[symbol] = self.parse_symbol_data(symbol_data)
+        if not "quoteResponse" in json:
+            raise UpdateFailed("Invalid json, 'quoteResponse' not found")
 
-                _LOGGER.debug(
-                    "Updated %s=%s",
-                    symbol,
-                    data[symbol][DATA_REGULAR_MARKET_PRICE],
-                )
+        quoteResponse = json["quoteResponse"]  # pylint: disable=invalid-name
 
-            self.data = data
-            _LOGGER.info("Data updated")
+        if "error" in quoteResponse:
+            if not quoteResponse["error"] is None:
+                raise UpdateFailed(quoteResponse["error"])
+
+        if not "result" in quoteResponse:
+            raise UpdateFailed("Invalid json, 'result' not found")
+
+        result = quoteResponse["result"]
+        if result is None:
+            raise UpdateFailed("Invalid json, 'result' is None")
+
+        data = {}
+        for symbol_data in result:
+            symbol = symbol_data["symbol"]
+            data[symbol] = self.parse_symbol_data(symbol_data)
+
+            _LOGGER.debug(
+                "Updated %s=%s",
+                symbol,
+                data[symbol][DATA_REGULAR_MARKET_PRICE],
+            )
+
+        self.data = data
+        self.last_update_success = True
+        _LOGGER.info("Data updated")

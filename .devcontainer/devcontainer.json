@@ -1,9 +1,8 @@
-// See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
 	"context": "..",
 	"image": "ludeeus/container:integration",
 	"appPort": "9123:8123",
-	"postCreateCommand": "python -m pip install --upgrade flake8 isort black",
+	"postCreateCommand": "container install",
 	"extensions": [
 		"ms-python.python",
 		"github.vscode-pull-request-github",
@@ -18,6 +17,10 @@
 		"python.analysis.autoSearchPaths": false,
 		"python.linting.pylintEnabled": true,
 		"python.linting.enabled": true,
+		"python.linting.pylintArgs": [
+			"--disable",
+			"import-error"
+		],
 		"python.formatting.provider": "black",
 		"editor.formatOnPaste": false,
 		"editor.formatOnSave": true,

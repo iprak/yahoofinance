@@ -1,5 +1,0 @@
-flake8
-pytest
-pytest-cov
-pytest-homeassistant-custom-component
-subarulink==0.3.10rc2

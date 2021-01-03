@@ -1,12 +1,9 @@
 """Tests for Yahoo Finance component."""
 import copy
-import json
-import os
 
 from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.setup import async_setup_component
 import pytest
-from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock, patch
+from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock
 
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,
@@ -17,7 +14,6 @@ from custom_components.yahoofinance.const import (
     ATTR_TRENDING,
     CONF_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON,
-    CONF_SYMBOLS,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
@@ -25,12 +21,7 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
     DEFAULT_DECIMAL_PLACES,
-    DOMAIN,
-    HASS_DATA_CONFIG,
-    HASS_DATA_COORDINATOR,
     NUMERIC_DATA_KEYS,
-    SERVICE_REFRESH,
-    STRING_DATA_KEYS,
 )
 from custom_components.yahoofinance.sensor import YahooFinanceSensor
 
@@ -39,13 +30,6 @@ SAMPLE_VALID_CONFIG = {
     CONF_DECIMAL_PLACES: DEFAULT_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
 }
-
-
-def get_json(filename):
-    """Load sample JSON."""
-    path = os.path.join(os.path.dirname(__file__), filename)
-    with open(path, encoding="utf-8") as fptr:
-        return fptr.read()
 
 
 def build_mock_symbol_data(symbol, market_price):
@@ -57,7 +41,6 @@ def build_mock_symbol_data(symbol, market_price):
     return YahooSymbolUpdateCoordinator.parse_symbol_data(source_data)
 
 
-# @pytest.fixture
 def build_fake_coordinator(hass, last_update_success, symbol, market_price):
     """Fixture to mock the update data coordinator."""
     coordinator = Mock(
@@ -76,10 +59,7 @@ def build_fake_coordinator(hass, last_update_success, symbol, market_price):
 def test_sensor_data(
     hass, last_update_success, symbol, market_price, expected_market_price
 ):
-    """
-    Test sensor status when data corrdinator has data for that symbol
-    expected_market_price is the expected rounded market_price
-    """
+    """Test sensor status based on the expected_market_price."""
 
     fake_coordinator = build_fake_coordinator(
         hass, last_update_success, symbol, market_price
@@ -107,6 +87,8 @@ def test_sensor_data(
     assert sensor.unit_of_measurement == DEFAULT_CURRENCY
     assert attributes[ATTR_CURRENCY_SYMBOL] == DEFAULT_CURRENCY_SYMBOL
 
+    assert sensor.should_poll is False
+
 
 @pytest.mark.parametrize(
     "market_price, decimal_places, expected_market_price",
@@ -117,7 +99,10 @@ def test_sensor_data(
         (12.12345, -1, 12.12345),
     ],
 )
-def test_sensor_data_rounded(hass, market_price, decimal_places, expected_market_price):
+def test_sensor_state_rounding(
+    hass, market_price, decimal_places, expected_market_price
+):
+    """Tests numeric value rounding."""
 
     symbol = "ABC"
     fake_coordinator = build_fake_coordinator(hass, True, symbol, market_price)
@@ -138,7 +123,7 @@ def test_sensor_data_rounded(hass, market_price, decimal_places, expected_market
 def test_sensor_data_when_coordinator_is_missing_data(
     hass, last_update_success, symbol, market_price
 ):
-    """Test sensor status when data corrdinator does not have data for that symbol"""
+    """Test sensor status when data corrdinator does not have data for that symbol."""
     fake_coordinator = build_fake_coordinator(
         hass, last_update_success, symbol, market_price
     )
@@ -152,10 +137,21 @@ def test_sensor_data_when_coordinator_is_missing_data(
     # Accessing `available` triggers data population
     assert sensor.available is last_update_success
 
-    assert sensor.state == None
+    assert sensor.state is None
 
-    # Symbol is used as name when thre is no data
+    # Symbol is used as name when there is no data
     assert sensor.name == symbol_to_test
+
+
+async def test_update_calls_coordinator(hass):
+    """Test sensor data update."""
+    symbol = "XYZ"
+    fake_coordinator = build_fake_coordinator(hass, True, symbol, None)
+    fake_coordinator.async_request_refresh = AsyncMock(return_value=None)
+    sensor = YahooFinanceSensor(hass, fake_coordinator, symbol, SAMPLE_VALID_CONFIG)
+
+    await sensor.async_update()
+    assert fake_coordinator.async_request_refresh.call_count == 1
 
 
 @pytest.mark.parametrize(
@@ -172,9 +168,7 @@ def test_sensor_data_when_coordinator_is_missing_data(
 def test_sensor_trend(
     hass, market_price, previous_close, show_trending, expected_trend
 ):
-    """
-    Test sensor trending status.
-    """
+    """Test sensor trending status."""
 
     symbol = "XYZ"
     fake_coordinator = build_fake_coordinator(hass, True, symbol, market_price)
@@ -199,12 +193,37 @@ def test_sensor_trend(
         assert sensor.icon == f"mdi:currency-{lower_currency}"
 
 
-async def test_data_from_json(hass):
+def test_sensor_trending_state_is_not_populate_if_previous_closing_not_populated(hass):
+    """The trending state is None if _previous_close is None for some reason."""
+
+    symbol = "XYZ"
+    fake_coordinator = build_fake_coordinator(hass, True, symbol, 12)
+
+    # Force update _previous_close to None
+    fake_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+
+    config = copy.deepcopy(SAMPLE_VALID_CONFIG)
+    config[CONF_SHOW_TRENDING_ICON] = True
+
+    sensor = YahooFinanceSensor(hass, fake_coordinator, symbol, config)
+
+    # Accessing `available` triggers data population
+    assert sensor.available is True
+
+    # ATTR_TRENDING should always reflect the trending status regarding of CONF_SHOW_TRENDING_ICON
+    assert (ATTR_TRENDING in sensor.device_state_attributes) is False
+
+    # icon is based on the currency
+    currency = sensor.unit_of_measurement
+    lower_currency = currency.lower()
+    assert sensor.icon == f"mdi:currency-{lower_currency}"
+
+
+async def test_data_from_json(hass, mock_json):
+    """Tests data update all the way from from json."""
     symbol = "BABA"
-    json_content = get_json("yahoofinance.json")
-    json_data = json.loads(json_content)
     coordinator = YahooSymbolUpdateCoordinator([symbol], hass, DEFAULT_SCAN_INTERVAL)
-    coordinator.get_json = AsyncMock(return_value=json_data)
+    coordinator.get_json = AsyncMock(return_value=mock_json)
     await coordinator.update()
 
     sensor = YahooFinanceSensor(hass, coordinator, symbol, SAMPLE_VALID_CONFIG)

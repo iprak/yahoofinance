@@ -1,0 +1,4 @@
+# Strictly for tests
+pytest<6.0
+pytest-cov<3.0.0
+pytest-homeassistant-custom-component
