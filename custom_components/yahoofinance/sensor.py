@@ -52,8 +52,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         YahooFinanceSensor(hass, coordinator, symbol, options) for symbol in symbols
     ]
 
-    # The DataCoordinator already fetched initial data so we don't need to fetch it again.
-    async_add_entities(sensors, False)
+    async_add_entities(sensors, update_before_add=False)
     _LOGGER.info("Added sensors for %s", symbols)
 
 
@@ -86,7 +85,7 @@ class YahooFinanceSensor(Entity):
 
         _LOGGER.debug("Created %s", self.entity_id)
 
-    def _format(self, value):
+    def _round(self, value):
         """Return formatted value based on _decimal_places"""
         if value is None:
             return None
@@ -114,7 +113,7 @@ class YahooFinanceSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._format(self._market_price)
+        return self._round(self._market_price)
 
     @property
     def unit_of_measurement(self) -> str:
@@ -147,7 +146,7 @@ class YahooFinanceSensor(Entity):
         self._previous_close = symbol_data[DATA_REGULAR_MARKET_PREVIOUS_CLOSE]
 
         for key in NUMERIC_DATA_KEYS:
-            self._attributes[key] = self._format(symbol_data[key])
+            self._attributes[key] = self._round(symbol_data[key])
 
         # Prefer currency over financialCurrency, for foreign symbols financialCurrency
         # can represent the remote currency. But financialCurrency can also be None.
@@ -168,7 +167,7 @@ class YahooFinanceSensor(Entity):
 
         trending_state = self.get_trending_state()
 
-        # Fall back to currency based icon if there is no trending state (based on _previous_close value)
+        # Fall back to currency based icon if there is no trending state
         if not trending_state is None:
             self._attributes[ATTR_TRENDING] = trending_state
 

@@ -14,7 +14,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import discovery
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 import voluptuous as vol
 
 from .const import (
@@ -144,29 +144,34 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         return json
 
     async def update(self):
-        """Update data. Data is not updated if JSON result is invalid."""
+        """Return updated data. No update is done if the JSON is invalid."""
 
         self.last_update_success = False
         json = await self.get_json()
 
         if json is None:
-            raise UpdateFailed("Failed to get data")
+            _LOGGER.error("Failed to get download data")
+            return self.data
 
         if not "quoteResponse" in json:
-            raise UpdateFailed("Invalid json, 'quoteResponse' not found")
+            _LOGGER.error("Invalid data: 'quoteResponse' not found.")
+            return self.data
 
         quoteResponse = json["quoteResponse"]  # pylint: disable=invalid-name
 
         if "error" in quoteResponse:
-            if not quoteResponse["error"] is None:
-                raise UpdateFailed(quoteResponse["error"])
+            if quoteResponse["error"] is not None:
+                _LOGGER.error("Error: %s", quoteResponse["error"])
+                return self.data
 
         if not "result" in quoteResponse:
-            raise UpdateFailed("Invalid json, 'result' not found")
+            _LOGGER.error("Invalid data: no 'result' found")
+            return self.data
 
         result = quoteResponse["result"]
         if result is None:
-            raise UpdateFailed("Invalid json, 'result' is None")
+            _LOGGER.error("Invalid data: 'result' is None")
+            return self.data
 
         data = {}
         for symbol_data in result:
@@ -182,3 +187,4 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         self.data = data
         self.last_update_success = True
         _LOGGER.info("Data updated")
+        return data

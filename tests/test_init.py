@@ -7,7 +7,6 @@ from homeassistant.setup import async_setup_component
 import pytest
 from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock, patch
 
-# from custom_components import yahoofinance
 from custom_components.yahoofinance import DEFAULT_SCAN_INTERVAL
 from custom_components.yahoofinance.const import (
     CONF_DECIMAL_PLACES,
@@ -19,9 +18,6 @@ from custom_components.yahoofinance.const import (
     HASS_DATA_CONFIG,
     SERVICE_REFRESH,
 )
-
-# from custom_components.yahoofinance.sensor import async_setup_platform
-
 
 SAMPLE_VALID_CONFIG = {DOMAIN: {CONF_SYMBOLS: ["BABA"]}}
 
@@ -85,12 +81,9 @@ async def test_setup_adds_sensor_to_hass(hass, mock_json):
         "custom_components.yahoofinance.YahooSymbolUpdateCoordinator.get_json",
         AsyncMock(return_value=mock_json),
     ):
-        # YahooSymbolUpdateCoordinator.async_refresh = AsyncMock(return_value=None)
-
         assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
         await hass.async_block_till_done()
 
-        # assert YahooSymbolUpdateCoordinator.async_refresh.call_count == 1
         assert mock_async_added_to_hass.call_count == 1
 
 

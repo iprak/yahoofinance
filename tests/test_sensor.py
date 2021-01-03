@@ -41,7 +41,7 @@ def build_mock_symbol_data(symbol, market_price):
     return YahooSymbolUpdateCoordinator.parse_symbol_data(source_data)
 
 
-def build_fake_coordinator(hass, last_update_success, symbol, market_price):
+def build_mock_coordinator(hass, last_update_success, symbol, market_price):
     """Fixture to mock the update data coordinator."""
     coordinator = Mock(
         data={symbol: build_mock_symbol_data(symbol, market_price)},
@@ -61,11 +61,11 @@ def test_sensor_data(
 ):
     """Test sensor status based on the expected_market_price."""
 
-    fake_coordinator = build_fake_coordinator(
+    mock_coordinator = build_mock_coordinator(
         hass, last_update_success, symbol, market_price
     )
 
-    sensor = YahooFinanceSensor(hass, fake_coordinator, symbol, SAMPLE_VALID_CONFIG)
+    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, SAMPLE_VALID_CONFIG)
 
     # Accessing `available` triggers data population
     assert sensor.available is last_update_success
@@ -105,12 +105,12 @@ def test_sensor_state_rounding(
     """Tests numeric value rounding."""
 
     symbol = "ABC"
-    fake_coordinator = build_fake_coordinator(hass, True, symbol, market_price)
+    mock_coordinator = build_mock_coordinator(hass, True, symbol, market_price)
 
     config = copy.deepcopy(SAMPLE_VALID_CONFIG)
     config[CONF_DECIMAL_PLACES] = decimal_places
 
-    sensor = YahooFinanceSensor(hass, fake_coordinator, symbol, config)
+    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, config)
 
     # Accessing `available` triggers data population
     assert sensor.available is True
@@ -120,18 +120,18 @@ def test_sensor_state_rounding(
 
 
 @pytest.mark.parametrize("last_update_success,symbol,market_price", [(True, "XYZ", 12)])
-def test_sensor_data_when_coordinator_is_missing_data(
+def test_sensor_data_when_coordinator_is_missing_symbol_data(
     hass, last_update_success, symbol, market_price
 ):
     """Test sensor status when data corrdinator does not have data for that symbol."""
-    fake_coordinator = build_fake_coordinator(
+    mock_coordinator = build_mock_coordinator(
         hass, last_update_success, symbol, market_price
     )
 
     # Create a sensor for some other symbol
     symbol_to_test = "ABC"
     sensor = YahooFinanceSensor(
-        hass, fake_coordinator, symbol_to_test, SAMPLE_VALID_CONFIG
+        hass, mock_coordinator, symbol_to_test, SAMPLE_VALID_CONFIG
     )
 
     # Accessing `available` triggers data population
@@ -143,15 +143,33 @@ def test_sensor_data_when_coordinator_is_missing_data(
     assert sensor.name == symbol_to_test
 
 
+def test_sensor_data_when_corrdinator_returns_none(hass):
+    """Test sensor status when data corrdinator does not have any data."""
+
+    symbol = "XYZ"
+    mock_coordinator = build_mock_coordinator(hass, True, symbol, 12)
+
+    # Force coordinator data to be None
+    mock_coordinator.data = None
+
+    config = copy.deepcopy(SAMPLE_VALID_CONFIG)
+    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, config)
+
+    # Accessing `available` triggers data population
+    assert sensor.available is True
+
+    assert sensor.state is None
+
+
 async def test_update_calls_coordinator(hass):
     """Test sensor data update."""
     symbol = "XYZ"
-    fake_coordinator = build_fake_coordinator(hass, True, symbol, None)
-    fake_coordinator.async_request_refresh = AsyncMock(return_value=None)
-    sensor = YahooFinanceSensor(hass, fake_coordinator, symbol, SAMPLE_VALID_CONFIG)
+    mock_coordinator = build_mock_coordinator(hass, True, symbol, None)
+    mock_coordinator.async_request_refresh = AsyncMock(return_value=None)
+    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, SAMPLE_VALID_CONFIG)
 
     await sensor.async_update()
-    assert fake_coordinator.async_request_refresh.call_count == 1
+    assert mock_coordinator.async_request_refresh.call_count == 1
 
 
 @pytest.mark.parametrize(
@@ -171,13 +189,13 @@ def test_sensor_trend(
     """Test sensor trending status."""
 
     symbol = "XYZ"
-    fake_coordinator = build_fake_coordinator(hass, True, symbol, market_price)
-    fake_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = previous_close
+    mock_coordinator = build_mock_coordinator(hass, True, symbol, market_price)
+    mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = previous_close
 
     config = copy.deepcopy(SAMPLE_VALID_CONFIG)
     config[CONF_SHOW_TRENDING_ICON] = show_trending
 
-    sensor = YahooFinanceSensor(hass, fake_coordinator, symbol, config)
+    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, config)
 
     # Accessing `available` triggers data population
     assert sensor.available is True
@@ -197,15 +215,15 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_not_populated
     """The trending state is None if _previous_close is None for some reason."""
 
     symbol = "XYZ"
-    fake_coordinator = build_fake_coordinator(hass, True, symbol, 12)
+    mock_coordinator = build_mock_coordinator(hass, True, symbol, 12)
 
     # Force update _previous_close to None
-    fake_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+    mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
 
     config = copy.deepcopy(SAMPLE_VALID_CONFIG)
     config[CONF_SHOW_TRENDING_ICON] = True
 
-    sensor = YahooFinanceSensor(hass, fake_coordinator, symbol, config)
+    sensor = YahooFinanceSensor(hass, mock_coordinator, symbol, config)
 
     # Accessing `available` triggers data population
     assert sensor.available is True

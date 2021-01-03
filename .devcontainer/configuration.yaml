@@ -8,11 +8,10 @@ logbook:
 logger:
   default: error
   logs:
-    custom_components.yahoofinance: info
+    custom_components.yahoofinance: debug
 
 yahoofinance:
   show_trending_icon: True
-  decimal_places: 1
   symbols:
     - GBPUSD=X
     - IDFCBANK.BO

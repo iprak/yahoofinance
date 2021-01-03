@@ -1,8 +1,8 @@
 """Tests for Yahoo Finance component."""
 
 import asyncio
+import random
 
-from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock
 
@@ -10,6 +10,7 @@ from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,
     YahooSymbolUpdateCoordinator,
 )
+from custom_components.yahoofinance.const import DATA_REGULAR_MARKET_PRICE
 
 TEST_SYMBOL = "BABA"
 
@@ -25,16 +26,15 @@ TEST_SYMBOL = "BABA"
     ],
 )
 async def test_incomplete_json(hass, parsed_json, message):
-    """Test invalid json parsing. Existing data is not updated."""
+    """Existing data is not updated if JSON is invalid."""
     coordinator = YahooSymbolUpdateCoordinator(None, hass, DEFAULT_SCAN_INTERVAL)
     coordinator.get_json = AsyncMock(return_value=parsed_json)
 
-    existing_data = {}
+    existing_data = {TEST_SYMBOL: {DATA_REGULAR_MARKET_PRICE: random.random()}}
     coordinator.data = existing_data
     print(message)
 
-    with pytest.raises(UpdateFailed):
-        assert await coordinator.update()
+    assert await coordinator.update()
 
     assert coordinator.data is existing_data
     assert coordinator.last_update_success is False
@@ -48,18 +48,17 @@ async def test_incomplete_json(hass, parsed_json, message):
     ],
 )
 async def test_json_download_failure(hass, raised_exception):
-    """Test exceptions generated while downloading json. Existing data is not updated."""
+    """Existing data is not updated if exception enocuntered while downloading json."""
 
     coordinator = YahooSymbolUpdateCoordinator(
         [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL
     )
     coordinator.websession.get = AsyncMock(side_effect=raised_exception)
 
-    existing_data = {}
+    existing_data = {TEST_SYMBOL: {DATA_REGULAR_MARKET_PRICE: random.random()}}
     coordinator.data = existing_data
 
-    with pytest.raises(UpdateFailed):
-        assert await coordinator.update()
+    assert await coordinator.update()
 
     assert coordinator.data is existing_data
     assert coordinator.last_update_success is False
