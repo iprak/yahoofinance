@@ -1,0 +1,9 @@
+{
+    "finance": {
+        "result": null,
+        "error": {
+            "code": "Bad Request",
+            "description": "Missing required query parameter=symbols"
+        }
+    }
+}

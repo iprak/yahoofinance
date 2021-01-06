@@ -1,15 +1,13 @@
-// See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
 	"context": "..",
 	"image": "ludeeus/container:integration",
 	"appPort": "9123:8123",
+	"postCreateCommand": "container install",
 	"extensions": [
 		"ms-python.python",
 		"github.vscode-pull-request-github",
-		"tabnine.tabnine-vscode",
 		"ms-python.vscode-pylance",
 		"spmeesseman.vscode-taskexplorer"
-
 	],
 	"settings": {
 		"files.eol": "\n",
@@ -19,6 +17,10 @@
 		"python.analysis.autoSearchPaths": false,
 		"python.linting.pylintEnabled": true,
 		"python.linting.enabled": true,
+		"python.linting.pylintArgs": [
+			"--disable",
+			"import-error"
+		],
 		"python.formatting.provider": "black",
 		"editor.formatOnPaste": false,
 		"editor.formatOnSave": true,

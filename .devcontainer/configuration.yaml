@@ -8,13 +8,12 @@ logbook:
 logger:
   default: error
   logs:
-    custom_components.yahoofinance: info
+    custom_components.yahoofinance: debug
 
-sensor:
-  - platform: yahoofinance
-    show_trending_icon: True
-    symbols:
-      - GBPUSD=X
-      - IDFCBANK.BO
-      - baba
-      - ^SSMI
+yahoofinance:
+  show_trending_icon: True
+  symbols:
+    - GBPUSD=X
+    - IDFCBANK.BO
+    - baba
+    - ^SSMI
