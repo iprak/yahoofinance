@@ -1,11 +1,11 @@
 """Tests for Yahoo Finance component."""
 
 from datetime import timedelta
+from unittest.mock import AsyncMock, Mock, patch
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.setup import async_setup_component
 import pytest
-from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock, patch
 
 from custom_components.yahoofinance import DEFAULT_SCAN_INTERVAL
 from custom_components.yahoofinance.const import (
