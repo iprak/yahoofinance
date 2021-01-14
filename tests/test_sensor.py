@@ -1,9 +1,9 @@
 """Tests for Yahoo Finance component."""
 import copy
+from unittest.mock import AsyncMock, Mock
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 import pytest
-from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock
 
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,

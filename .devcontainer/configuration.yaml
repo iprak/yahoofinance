@@ -1,5 +1,5 @@
-#Limited configuration instead of default_config
-#https://github.com/home-assistant/core/tree/dev/homeassistant/components/default_config
+# Limited configuration instead of default_config
+# https://github.com/home-assistant/core/tree/dev/homeassistant/components/default_config
 automation:
 frontend:
 history:

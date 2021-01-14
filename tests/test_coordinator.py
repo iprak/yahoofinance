@@ -2,9 +2,9 @@
 
 import asyncio
 import random
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from pytest_homeassistant_custom_component.async_mock import AsyncMock, Mock
 
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,

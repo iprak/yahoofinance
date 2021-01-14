@@ -4,11 +4,9 @@ The Yahoo finance component.
 https://github.com/iprak/yahoofinance
 """
 
-import asyncio
 from datetime import timedelta
 import logging
 
-import aiohttp
 import async_timeout
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.helpers import discovery
@@ -158,7 +156,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         if json is None:
             raise UpdateFailed("No data received")
 
-        if not "quoteResponse" in json:
+        if "quoteResponse" not in json:
             raise UpdateFailed("Data invalid, 'quoteResponse' not found.")
 
         quoteResponse = json["quoteResponse"]  # pylint: disable=invalid-name
@@ -167,7 +165,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             if quoteResponse["error"] is not None:
                 raise UpdateFailed(quoteResponse["error"])
 
-        if not "result" in quoteResponse:
+        if "result" not in quoteResponse:
             raise UpdateFailed("Data invalid, no 'result' found")
 
         result = quoteResponse["result"]
