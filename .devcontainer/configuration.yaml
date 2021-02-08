@@ -12,8 +12,13 @@ logger:
 
 yahoofinance:
   show_trending_icon: True
+  #scan_interval: 15
+  #scan_interval: None
   symbols:
-    - GBPUSD=X
-    - IDFCBANK.BO
-    - baba
+    - symbol: GBPUSD=X
+    - symbol: IDFCBANK.BO
+    - symbol: baba
+      target_currency: inr
     - ^SSMI
+    - symbol: EMIM.L
+      target_currency: EUR
