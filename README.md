@@ -68,3 +68,8 @@ trending: up
 # Services
 
 The component exposes the service `yahoofinance.refresh_symbols` which can be used to refresh all the data.
+
+
+# Breaking Changes
+
+As of version 1.0.0, all the configuration is now under `yahoofinance`. If you are upgrading from an older version, then you would need to adjust the configuration.
