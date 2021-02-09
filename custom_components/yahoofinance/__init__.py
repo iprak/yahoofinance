@@ -21,6 +21,7 @@ from .const import (
     CONF_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
+    CONF_TARGET_CURRENCY,
     DATA_REGULAR_MARKET_PRICE,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_DECIMAL_PLACES,
@@ -37,14 +38,30 @@ DEFAULT_SCAN_INTERVAL = timedelta(hours=6)
 MINIMUM_SCAN_INTERVAL = timedelta(seconds=30)
 WEBSESSION_TIMEOUT = 15
 
+BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
+
+COMPLEX_SYMBOL_SCHEMA = vol.All(
+    dict,
+    vol.Schema(
+        {
+            vol.Required("symbol"): BASIC_SYMBOL_SCHEMA,
+            vol.Optional(CONF_TARGET_CURRENCY): BASIC_SYMBOL_SCHEMA,
+        }
+    ),
+)
+
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
-                vol.Required(CONF_SYMBOLS): vol.All(cv.ensure_list, [cv.string]),
+                vol.Required(CONF_SYMBOLS): vol.All(
+                    cv.ensure_list,
+                    [vol.Any(BASIC_SYMBOL_SCHEMA, COMPLEX_SYMBOL_SCHEMA)],
+                ),
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
                 ): vol.Any("none", "None", cv.positive_time_period),
+                vol.Optional(CONF_TARGET_CURRENCY): vol.All(cv.string, vol.Upper),
                 vol.Optional(
                     CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
                 ): cv.boolean,
@@ -75,15 +92,30 @@ def parse_scan_interval(scan_interval: Union[timedelta, str]) -> timedelta:
     return scan_interval
 
 
+def normalize_input(defined_symbols):
+    """Normalize input and remove duplicates."""
+    symbols = set()
+    normalized_symbols = []
+
+    for value in defined_symbols:
+        if isinstance(value, str):
+            if not (value in symbols):
+                symbols.add(value)
+                normalized_symbols.append({"symbol": value})
+        else:
+            if not (value["symbol"] in symbols):
+                symbols.add(value["symbol"])
+                normalized_symbols.append(value)
+
+    return (list(symbols), normalized_symbols)
+
+
 async def async_setup(hass, config) -> bool:
-    """Set up the Yahoo Finance sensors."""
-
     domain_config = config.get(DOMAIN, {})
-    symbols = domain_config.get(CONF_SYMBOLS, [])
+    defined_symbols = domain_config.get(CONF_SYMBOLS, [])
 
-    # Convert all symbols to upper case and save them back
-    symbols = [sym.upper() for sym in symbols]
-    domain_config[CONF_SYMBOLS] = symbols
+    symbols, normalized_symbols = normalize_input(defined_symbols)
+    domain_config[CONF_SYMBOLS] = normalized_symbols
 
     scan_interval = parse_scan_interval(domain_config.get(CONF_SCAN_INTERVAL))
 
@@ -133,10 +165,15 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
     def parse_symbol_data(symbol_data):
         """Return data pieces which we care about, use 0 for missing numeric values."""
         data = {}
-        for key in NUMERIC_DATA_KEYS:
+
+        # get() ensures that we have an entry in symbol_data.
+        for value in NUMERIC_DATA_KEYS:
+            key = value[0]
             data[key] = symbol_data.get(key, 0)
+
         for key in STRING_DATA_KEYS:
             data[key] = symbol_data.get(key)
+
         return data
 
     def __init__(self, symbols, hass, update_interval) -> None:
@@ -150,9 +187,27 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="YahooSymbolUpdateCoordinator",
-            update_method=self._update,
+            update_method=self._async_update,
             update_interval=update_interval,
         )
+
+    def get_symbols(self):
+        """Return symbols tracked by the coordinator."""
+        return self._symbols
+
+    def add_symbol(self, symbol):
+        """Add symbol to the symbol list."""
+        if symbol not in self._symbols:
+            self._symbols.append(symbol)
+
+            # Request a refresh to get data for the missing symbol.
+            # This would have been called while data for sensor was being parsed.
+            self.hass.async_create_task(self.async_request_refresh())
+
+            _LOGGER.info(f"Added symbol {symbol} and requested update")
+            return True
+
+        return False
 
     async def get_json(self):
         """Get the JSON data."""
@@ -165,7 +220,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Data = %s", json)
         return json
 
-    async def _update(self):
+    async def _async_update(self):
         """
         Return updated data if new JSON is valid.
 
@@ -201,7 +256,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             data[symbol] = self.parse_symbol_data(symbol_data)
 
             _LOGGER.debug(
-                "Updated %s=%s",
+                "Updated %s (%s)",
                 symbol,
                 data[symbol][DATA_REGULAR_MARKET_PRICE],
             )

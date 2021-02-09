@@ -37,8 +37,28 @@ DEFAULT_PARTIAL_CONFIG = {
     "domain_config, expected_partial_config",
     [
         (
+            # Normalize test
             {CONF_SYMBOLS: ["xyz"]},
-            {CONF_SYMBOLS: ["XYZ"]},
+            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
+        ),
+        (
+            # Another normalize test
+            {CONF_SYMBOLS: [{"symbol": "xyz"}]},
+            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
+        ),
+        (
+            {CONF_SYMBOLS: [{"symbol": "xyz"}, "abc"]},
+            {CONF_SYMBOLS: [{"symbol": "XYZ"}, {"symbol": "ABC"}]},
+        ),
+        (
+            # Duplicate removal test
+            {CONF_SYMBOLS: ["xyz", "xyz"]},
+            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
+        ),
+        (
+            # Another duplicate removal test
+            {CONF_SYMBOLS: [{"symbol": "xyz"}, "xyz"]},
+            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
         ),
         (
             {
@@ -47,7 +67,7 @@ DEFAULT_PARTIAL_CONFIG = {
                 CONF_DECIMAL_PLACES: 3,
             },
             {
-                CONF_SYMBOLS: ["XYZ"],
+                CONF_SYMBOLS: [{"symbol": "XYZ"}],
                 CONF_SCAN_INTERVAL: timedelta(hours=1),
                 CONF_DECIMAL_PLACES: 3,
             },
@@ -58,7 +78,7 @@ DEFAULT_PARTIAL_CONFIG = {
                 CONF_SCAN_INTERVAL: "None",
             },
             {
-                CONF_SYMBOLS: ["XYZ"],
+                CONF_SYMBOLS: [{"symbol": "XYZ"}],
                 CONF_SCAN_INTERVAL: None,
             },
         ),
@@ -68,7 +88,7 @@ DEFAULT_PARTIAL_CONFIG = {
                 CONF_SCAN_INTERVAL: "none",
             },
             {
-                CONF_SYMBOLS: ["XYZ"],
+                CONF_SYMBOLS: [{"symbol": "XYZ"}],
                 CONF_SCAN_INTERVAL: None,
             },
         ),

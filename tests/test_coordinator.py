@@ -2,7 +2,7 @@
 
 import asyncio
 import random
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -13,6 +13,7 @@ from custom_components.yahoofinance import (
 from custom_components.yahoofinance.const import DATA_REGULAR_MARKET_PRICE
 
 TEST_SYMBOL = "BABA"
+YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 
 
 @pytest.mark.parametrize(
@@ -89,3 +90,20 @@ async def test_successful_data_parsing(hass, mock_json):
     assert coordinator.data is not None
     assert TEST_SYMBOL in coordinator.data
     assert coordinator.last_update_success is True
+
+
+def test_add_symbol_existing(hass):
+    """Test check for existing symbols."""
+    coordinator = YahooSymbolUpdateCoordinator(
+        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL
+    )
+    assert coordinator.add_symbol(TEST_SYMBOL) is False
+
+
+def test_add_symbol(hass):
+    """Test check for existing symbols."""
+    coordinator = YahooSymbolUpdateCoordinator([], hass, DEFAULT_SCAN_INTERVAL)
+
+    with patch(f"{YSUC}.async_request_refresh"):
+        assert coordinator.add_symbol(TEST_SYMBOL) is True
+        assert TEST_SYMBOL in coordinator.get_symbols()
