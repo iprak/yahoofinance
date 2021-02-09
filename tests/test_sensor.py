@@ -1,6 +1,6 @@
 """Tests for Yahoo Finance component."""
 import copy
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 import pytest
@@ -14,6 +14,8 @@ from custom_components.yahoofinance.const import (
     ATTR_TRENDING,
     CONF_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON,
+    CONF_TARGET_CURRENCY,
+    DATA_FINANCIAL_CURRENCY,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
@@ -31,10 +33,13 @@ SAMPLE_VALID_CONFIG = {
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
 }
 
+YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 
-def build_mock_symbol_data(symbol, market_price):
+
+def build_mock_symbol_data(symbol, market_price, currency="USD"):
     """Build mock data for a symbol."""
     source_data = {
+        DATA_FINANCIAL_CURRENCY: currency,
         DATA_SHORT_NAME: f"Symbol {symbol}",
         DATA_REGULAR_MARKET_PRICE: market_price,
     }
@@ -47,6 +52,26 @@ def build_mock_coordinator(hass, last_update_success, symbol, market_price):
         data={symbol: build_mock_symbol_data(symbol, market_price)},
         hass=hass,
         last_update_success=last_update_success,
+    )
+
+    return coordinator
+
+
+def build_mock_coordinator_for_conversion(
+    hass, symbol, market_price, currency, target_currency, target_market_price
+):
+    """Build a mock data coordinator with conversion data."""
+
+    target_symbol = f"{currency}{target_currency}=X"
+    coordinator = Mock(
+        data={
+            symbol: build_mock_symbol_data(symbol, market_price),
+            target_symbol: build_mock_symbol_data(
+                target_symbol, target_market_price, target_currency
+            ),
+        },
+        hass=hass,
+        last_update_success=True,
     )
 
     return coordinator
@@ -269,3 +294,58 @@ async def test_data_from_json(hass, mock_json):
     assert sensor.state == 232.73
     assert attributes["regularMarketChange"] == -5.66
     assert attributes["twoHundredDayAverageChangePercent"] == -0.13
+
+
+@pytest.mark.parametrize(
+    "value,conversion,expected",
+    [(123.5, 1, 123.5), (None, 1, None), (123.5, None, 123.5)],
+)
+def test_safe_convert(hass, value, conversion, expected):
+    """Test value conversion."""
+    assert YahooFinanceSensor.safe_convert(value, conversion) == expected
+
+
+def test_conversion(hass):
+    """Numeric values get multiplied based on conversion currency."""
+
+    symbol = "XYZ"
+    mock_coordinator = build_mock_coordinator_for_conversion(
+        hass, symbol, 12, "USD", "CHF", 1.5
+    )
+
+    # Force update _previous_close to None
+    mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+
+    sensor = YahooFinanceSensor(
+        hass,
+        mock_coordinator,
+        {"symbol": symbol, CONF_TARGET_CURRENCY: "CHF"},
+        SAMPLE_VALID_CONFIG,
+    )
+
+    # Accessing `available` triggers data population
+    assert sensor.available is True
+    assert sensor.state == (12 * 1.5)
+
+
+def test_conversion_requests_additional_data_from_coordinator(hass):
+    """Numeric values get multiplied based on conversion currency."""
+
+    symbol = "XYZ"
+    mock_coordinator = build_mock_coordinator(hass, True, symbol, 12)
+
+    # Force update _previous_close to None
+    mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+
+    sensor = YahooFinanceSensor(
+        hass,
+        mock_coordinator,
+        {"symbol": symbol, CONF_TARGET_CURRENCY: "EUR"},
+        SAMPLE_VALID_CONFIG,
+    )
+
+    with patch.object(mock_coordinator, "add_symbol") as mock_add_symbol:
+        # Accessing `available` triggers data population
+        assert sensor.available is True
+
+        assert mock_add_symbol.call_count == 1

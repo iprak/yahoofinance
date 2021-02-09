@@ -193,6 +193,10 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             update_interval=update_interval,
         )
 
+    def get_symbols(self):
+        """Return symbols tracked by the coordinator."""
+        return self._symbols
+
     def add_symbol(self, symbol):
         """Add symbol to the symbol list."""
         if symbol not in self._symbols:
