@@ -8,7 +8,7 @@ This can be installed through [HACS](https://hacs.xyz/) or by copying all the fi
 
 # Configuration
 
-Define the symbols to be tracked in `configuration.yaml`. The symbol can also represent a financial index such as [this](https://finance.yahoo.com/world-indices/).
+Define the symbols to be tracked and optional parameters in `configuration.yaml`.
 
 ```yaml
 # Example configuration.yaml entry
@@ -23,6 +23,8 @@ The above configuration will generate an entity with the id `yahoofinance.istnx`
 attribution: Data provided by Yahoo Finance
 currencySymbol: $
 symbol: ISTNX
+quoteType: MUTUALFUND
+quoteSourceName: Delayed Quote
 averageDailyVolume10Day: 16
 averageDailyVolume3Month: 1745
 fiftyDayAverage: 284.3
@@ -41,10 +43,10 @@ regularMarketVolume: 14
 twoHundredDayAverage: 261.2
 twoHundredDayAverageChange: 6.0
 twoHundredDayAverageChangePercent: 0.02
+trending: up
 unit_of_measurement: USD
 friendly_name: ...
 icon: 'mdi:trending-up'
-trending: up
 ```
 
 ## Optional Configuration
@@ -64,6 +66,49 @@ trending: up
   ```yaml
   decimal_places: 3
   ```
+- An alternate target currency can be specified for a symbol using the extended declaration format. Here, the symbol EMIM.L is reported in USD but will be presented in EUR. The conversion would be based on the value of the symbol USDEUR=X.
+
+  ```yaml
+  symbols:
+    - symbol: EMIM.L
+      target_currency: EUR
+    ```
+
+  If data for the target currency is not found, then the display will remain in original currency. The conversion is only applied on the attributes representing prices.
+
+
+## Examples
+- The symbol can also represent a financial index such as [this](https://finance.yahoo.com/world-indices/).
+
+  ```yaml
+  symbols:
+    - ^SSMI
+  ```
+- Yahoo also provides currency conversion as a symbol.
+  ```yaml
+  symbols:
+    - GBPUSD=X
+  ```
+- The trending icons themselves cannot be colored but colors can be added using [browser_mod](https://github.com/thomasloven/hass-browser_mod/). Here [auto-entities](https://github.com/thomasloven/lovelace-auto-entities) is being used to simplify the code.
+
+  ```yaml
+  - type: custom:auto-entities
+    card:
+      type: entities
+      title: Financial
+    filter:
+      include:
+        - group: group.stocks
+          options:
+            entity: this.entity_id
+            style: |
+              :host {
+                --paper-item-icon-color: {% set value=state_attr(config.entity,"trending") %}
+                                        {% if value=="up" -%} green
+                                        {% elif value=="down" -%} red
+                                        {% else %} var(--paper-item-icon-color))
+                                        {% endif %};
+  ```
 
 # Services
 
@@ -72,4 +117,5 @@ The component exposes the service `yahoofinance.refresh_symbols` which can be us
 
 # Breaking Changes
 
-As of version 1.0.0, all the configuration is now under `yahoofinance`. If you are upgrading from an older version, then you would need to adjust the configuration.
+- As of version 1.0.0, all the configuration is now under `yahoofinance`. If you are upgrading from an older version, then you would need to adjust the configuration.
+- As of version 1.0.1, the minimum `scan_interval` is 30 seconds.
