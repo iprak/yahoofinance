@@ -49,11 +49,13 @@ trending: up
 
 ## Optional Configuration
 
-- Data fetch interval can be adjusted by specifying the `scan_interval` setting whose default value is 6 hours.
+- Data fetch interval can be adjusted by specifying the `scan_interval` setting whose default value is 6 hours and the minimum value is 30 seconds.
   ```yaml
   scan_interval:
     hours: 4
   ```
+  You can disable automatic update by passing `None` for `scan_interval`.
+
 - Trending icons (trending-up, trending-down or trending-neutral) can be displayed instead of currency based icon by specifying `show_trending_icon`.
   ```yaml
   show_trending_icon: true
@@ -66,3 +68,8 @@ trending: up
 # Services
 
 The component exposes the service `yahoofinance.refresh_symbols` which can be used to refresh all the data.
+
+
+# Breaking Changes
+
+As of version 1.0.0, all the configuration is now under `yahoofinance`. If you are upgrading from an older version, then you would need to adjust the configuration.

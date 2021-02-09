@@ -111,14 +111,12 @@ def normalize_input(defined_symbols):
 
 
 async def async_setup(hass, config) -> bool:
-    """Set up the Yahoo Finance sensors."""
-
     domain_config = config.get(DOMAIN, {})
     defined_symbols = domain_config.get(CONF_SYMBOLS, [])
 
     symbols, normalized_symbols = normalize_input(defined_symbols)
-
     domain_config[CONF_SYMBOLS] = normalized_symbols
+
     scan_interval = parse_scan_interval(domain_config.get(CONF_SCAN_INTERVAL))
 
     # Populate parsed value into domain_config
