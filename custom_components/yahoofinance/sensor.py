@@ -149,21 +149,25 @@ class YahooFinanceSensor(Entity):
         return round(value, self._decimal_places)
 
     def _get_target_currency_conversion(self) -> float:
+        value = None
+
         if self._target_currency and self._original_currency:
+            conversion_symbol = (
+                f"{self._original_currency}{self._target_currency}=X".upper()
+            )
             data = self._coordinator.data
+
             if data is not None:
-                source_symbol = (
-                    f"{self._original_currency}{self._target_currency}=X".upper()
-                )
-                _LOGGER.debug(f"Conversion symbol = {source_symbol}")
-                symbol_data = data.get(source_symbol)
+                symbol_data = data.get(conversion_symbol)
 
                 if symbol_data is not None:
-                    return symbol_data[DATA_REGULAR_MARKET_PRICE]
+                    value = symbol_data[DATA_REGULAR_MARKET_PRICE]
                 else:
-                    self._coordinator.add_symbol(source_symbol)
+                    self._coordinator.add_symbol(conversion_symbol)
 
-        return None
+            _LOGGER.debug(f"{self._symbol} conversion {conversion_symbol}={value}")
+
+        return value
 
     @staticmethod
     def safe_convert(value, conversion):
@@ -181,7 +185,7 @@ class YahooFinanceSensor(Entity):
         currency = symbol_data[DATA_CURRENCY_SYMBOL]
 
         _LOGGER.debug(
-            "Updated %s (currency=%s, financialCurrency=%s)",
+            "%s currency=%s, financialCurrency=%s",
             self._symbol,
             ("None" if currency is None else currency),
             ("None" if financial_currency is None else financial_currency),
@@ -195,17 +199,16 @@ class YahooFinanceSensor(Entity):
 
         data = self._coordinator.data
         if data is None:
-            _LOGGER.debug("Coordinator data is None")
+            _LOGGER.debug(f"{self._symbol} Coordinator data is None")
             return
 
         symbol_data = data.get(self._symbol)
         if symbol_data is None:
-            _LOGGER.debug("Symbol data is None")
+            _LOGGER.debug(f"{self._symbol} Symbol data is None")
             return
 
         self._original_currency = self._get_original_currency(symbol_data)
         conversion = self._get_target_currency_conversion()
-        _LOGGER.debug(f"Currency conversion = {conversion}")
 
         self._short_name = symbol_data[DATA_SHORT_NAME]
         self._market_price = self.safe_convert(
