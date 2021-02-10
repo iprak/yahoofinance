@@ -4,3 +4,7 @@ secrets.yaml
 venv
 .pytest_cache
 .coverage
+
+# mypy
+/.mypy_cache/*
+/.dmypy.json

@@ -10,7 +10,7 @@ from typing import Union
 
 import async_timeout
 from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.helpers import discovery
+from homeassistant.helpers import discovery, event
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -37,6 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_SCAN_INTERVAL = timedelta(hours=6)
 MINIMUM_SCAN_INTERVAL = timedelta(seconds=30)
 WEBSESSION_TIMEOUT = 15
+DELAY_ASYNC_REQUEST_REFRESH = 5
 
 BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
 
@@ -111,6 +112,7 @@ def normalize_input(defined_symbols):
 
 
 async def async_setup(hass, config) -> bool:
+    """Set up the component."""
     domain_config = config.get(DOMAIN, {})
     defined_symbols = domain_config.get(CONF_SYMBOLS, [])
 
@@ -195,6 +197,10 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         """Return symbols tracked by the coordinator."""
         return self._symbols
 
+    async def async_request_refresh_later(self, _now):
+        """Request async_request_refresh."""
+        await self.async_request_refresh()
+
     def add_symbol(self, symbol):
         """Add symbol to the symbol list."""
         if symbol not in self._symbols:
@@ -202,9 +208,13 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
 
             # Request a refresh to get data for the missing symbol.
             # This would have been called while data for sensor was being parsed.
-            self.hass.async_create_task(self.async_request_refresh())
+            # async_request_refresh has debouncing built into it, so multiple calls to
+            # add_symbol will still resut in single refresh.
+            event.async_call_later(
+                self.hass, DELAY_ASYNC_REQUEST_REFRESH, self.async_request_refresh_later
+            )
 
-            _LOGGER.info(f"Added symbol {symbol} and requested update")
+            _LOGGER.info(f"Added symbol {symbol} and requesting update")
             return True
 
         return False
@@ -256,7 +266,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             data[symbol] = self.parse_symbol_data(symbol_data)
 
             _LOGGER.debug(
-                "Updated %s (%s)",
+                "Updated %s to %s",
                 symbol,
                 data[symbol][DATA_REGULAR_MARKET_PRICE],
             )
