@@ -1,9 +1,9 @@
 {
 	"name": "Home Assistant Custom Component Dev",
 	"context": "..",
-	"image": "ludeeus/container:integration-debian",
+	"image": "ghcr.io/ludeeus/devcontainer/integration:stable",
 	"appPort": "9123:8123",
-	"postCreateCommand": "python -m pip install -r requirements_test.txt && container install",
+	"postCreateCommand": "python3 -m pip install -r requirements_test.txt && container install",
 	"extensions": [
 		"ms-python.python",
 		"github.vscode-pull-request-github",
@@ -23,6 +23,9 @@
 			"import-error"
 		],
 		"python.formatting.provider": "black",
+		"python.testing.pytestArgs": [
+			"--no-cov"
+		],
 		"editor.formatOnPaste": false,
 		"editor.formatOnSave": true,
 		"editor.formatOnType": true,
