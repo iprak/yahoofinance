@@ -13,6 +13,7 @@ from custom_components.yahoofinance import (
 from custom_components.yahoofinance.const import DATA_REGULAR_MARKET_PRICE
 
 TEST_SYMBOL = "BABA"
+SECOND_TEST_SYMBOL = "^SSMI"
 YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 
 
@@ -92,7 +93,17 @@ async def test_successful_data_parsing(hass, mock_json):
     assert coordinator.last_update_success is True
 
 
-def test_add_symbol_existing(hass):
+async def test_add_symbol(hass):
+    """Add symbol for load."""
+    coordinator = YahooSymbolUpdateCoordinator([], hass, DEFAULT_SCAN_INTERVAL)
+
+    with patch("homeassistant.helpers.event.async_call_later") as mock_async_call_later:
+        assert coordinator.add_symbol(TEST_SYMBOL) is True
+        assert TEST_SYMBOL in coordinator.get_symbols()
+        assert len(mock_async_call_later.mock_calls) == 1
+
+
+async def test_add_symbol_existing(hass):
     """Test check for existing symbols."""
     coordinator = YahooSymbolUpdateCoordinator(
         [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL
@@ -100,10 +111,21 @@ def test_add_symbol_existing(hass):
     assert coordinator.add_symbol(TEST_SYMBOL) is False
 
 
-def test_add_symbol(hass):
-    """Test check for existing symbols."""
+async def test_add_multiple_symbols(hass):
+    """Add multiple symbols removes existing async_call_later."""
     coordinator = YahooSymbolUpdateCoordinator([], hass, DEFAULT_SCAN_INTERVAL)
 
-    with patch(f"{YSUC}.async_request_refresh"):
+    mock_remover = Mock()
+    with patch(
+        "homeassistant.helpers.event.async_call_later", return_value=mock_remover
+    ) as mock_async_call_later:
         assert coordinator.add_symbol(TEST_SYMBOL) is True
         assert TEST_SYMBOL in coordinator.get_symbols()
+        assert len(mock_async_call_later.mock_calls) == 1
+
+        # Adding another symbol will remove existing async_call_later callback
+        assert coordinator.add_symbol(SECOND_TEST_SYMBOL) is True
+        assert SECOND_TEST_SYMBOL in coordinator.get_symbols()
+        assert len(mock_async_call_later.mock_calls) == 2
+
+        assert (len(mock_remover.mock_calls)) == 1
