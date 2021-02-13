@@ -1,6 +1,8 @@
 # Summary
 
-A custom component to display stock information from Yahoo finance.
+A custom component to display stock information from [Yahoo finance](https://finance.yahoo.com/).
+
+Currency details can be presented in an different currency than what is reported (`target_currency`). Data is downloaded at regular intervals (`scan_interval`) but a retry is attempted after 20 seconds in case of failure.
 
 # Installation
 

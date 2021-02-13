@@ -38,6 +38,7 @@ DEFAULT_SCAN_INTERVAL = timedelta(hours=6)
 MINIMUM_SCAN_INTERVAL = timedelta(seconds=30)
 WEBSESSION_TIMEOUT = 15
 DELAY_ASYNC_REQUEST_REFRESH = 5
+FAILURE_ASYNC_REQUEST_REFRESH = 20
 
 BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
 
@@ -100,11 +101,11 @@ def normalize_input(defined_symbols):
 
     for value in defined_symbols:
         if isinstance(value, str):
-            if not (value in symbols):
+            if value not in symbols:
                 symbols.add(value)
                 normalized_symbols.append({"symbol": value})
         else:
-            if not (value["symbol"] in symbols):
+            if value["symbol"] not in symbols:
                 symbols.add(value["symbol"])
                 normalized_symbols.append(value)
 
@@ -128,7 +129,7 @@ async def async_setup(hass, config) -> bool:
 
     # Refresh coordinator to get initial symbol data
     _LOGGER.info(
-        f"Requesting data from coordinator with update interval of {scan_interval}."
+        "Requesting data from coordinator with update interval of %s.", scan_interval
     )
     await coordinator.async_refresh()
 
@@ -184,12 +185,13 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         self.data = None
         self.loop = hass.loop
         self.websession = async_get_clientsession(hass)
+        self._refresh_remover = None
 
         super().__init__(
             hass,
             _LOGGER,
             name="YahooSymbolUpdateCoordinator",
-            update_method=self._async_update,
+            update_method=self._async_update_with_retry,
             update_interval=update_interval,
         )
 
@@ -201,20 +203,32 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         """Request async_request_refresh."""
         await self.async_request_refresh()
 
-    def add_symbol(self, symbol):
+    def _add_refresh_later(self, duration) -> None:
+        """Add a callback for async_call_later."""
+        if self._refresh_remover:
+            self._refresh_remover()
+            self._refresh_remover = None
+
+        self._refresh_remover = event.async_call_later(
+            self.hass, duration, self.async_request_refresh_later
+        )
+
+    def add_symbol(self, symbol) -> bool:
         """Add symbol to the symbol list."""
         if symbol not in self._symbols:
             self._symbols.append(symbol)
 
             # Request a refresh to get data for the missing symbol.
             # This would have been called while data for sensor was being parsed.
-            # async_request_refresh has debouncing built into it, so multiple calls to
-            # add_symbol will still resut in single refresh.
-            event.async_call_later(
-                self.hass, DELAY_ASYNC_REQUEST_REFRESH, self.async_request_refresh_later
-            )
+            # async_request_refresh has debouncing built into it, so multiple calls
+            # to add_symbol will still resut in single refresh.
+            self._add_refresh_later(DELAY_ASYNC_REQUEST_REFRESH)
 
-            _LOGGER.info(f"Added symbol {symbol} and requesting update")
+            _LOGGER.info(
+                "Added %s and requested update in %d seconds.",
+                symbol,
+                DELAY_ASYNC_REQUEST_REFRESH,
+            )
             return True
 
         return False
@@ -234,9 +248,8 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         """
         Return updated data if new JSON is valid.
 
-        Don't catch any exceptions, they get properly handled in the caller
-        (DataUpdateCoordinator.async_refresh) which also updates last_update_success.
-        UpdateFailed is raised if JSON is invalid.
+        The exception will get properly handled in the caller (DataUpdateCoordinator.async_refresh)
+        which also updates last_update_success. UpdateFailed is raised if JSON is invalid.
         """
 
         json = await self.get_json()
@@ -273,3 +286,16 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
 
         _LOGGER.info("Data updated")
         return data
+
+    async def _async_update_with_retry(self):
+        """Update data or set up a retry."""
+
+        try:
+            return await self._async_update()
+        except:  # noqa: E722 pylint: disable=bare-except:
+            _LOGGER.warning(
+                "Error obtaining data, retrying in %d seconds.",
+                FAILURE_ASYNC_REQUEST_REFRESH,
+            )
+            self._add_refresh_later(FAILURE_ASYNC_REQUEST_REFRESH)
+            raise
