@@ -58,11 +58,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     ]
 
     async_add_entities(sensors, update_before_add=False)
-    _LOGGER.info("Platform added sensors for %s", symbols)
+    _LOGGER.info("Entities added for %s", [item["symbol"] for item in symbols])
 
 
 class YahooFinanceSensor(Entity):
-    """Defines a Yahoo finance sensor."""
+    """Represents a Yahoo finance entity."""
 
     _currency = DEFAULT_CURRENCY
     _icon = DEFAULT_ICON
@@ -165,7 +165,7 @@ class YahooFinanceSensor(Entity):
                 else:
                     self._coordinator.add_symbol(conversion_symbol)
 
-            _LOGGER.debug("%s conversion %s=%d", self._symbol, conversion_symbol, value)
+            _LOGGER.debug("%s conversion %s=%s", self._symbol, conversion_symbol, value)
 
         return value
 
