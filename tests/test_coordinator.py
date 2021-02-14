@@ -1,6 +1,7 @@
 """Tests for Yahoo Finance component."""
 
 import asyncio
+from datetime import timedelta
 import random
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -8,6 +9,7 @@ import pytest
 
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,
+    FAILURE_ASYNC_REQUEST_REFRESH,
     YahooSymbolUpdateCoordinator,
 )
 from custom_components.yahoofinance.const import DATA_REGULAR_MARKET_PRICE
@@ -66,11 +68,19 @@ async def test_json_download_failure(hass, raised_exception):
     existing_data = {TEST_SYMBOL: {DATA_REGULAR_MARKET_PRICE: random.random()}}
     coordinator.data = existing_data
 
-    await coordinator.async_refresh()
-    await hass.async_block_till_done()
+    mock_coordinator_listener = Mock()
+    coordinator.async_add_listener(mock_coordinator_listener)
 
-    assert coordinator.data is existing_data
-    assert coordinator.last_update_success is False
+    with patch.object(coordinator, "_schedule_refresh") as mock_schedule_refresh:
+
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+        assert coordinator.data is existing_data
+        assert coordinator.last_update_success is False
+
+        assert len(mock_coordinator_listener.mock_calls) == 1
+        assert len(mock_schedule_refresh.mock_calls) == 1
 
 
 async def test_successful_data_parsing(hass, mock_json):
@@ -97,10 +107,10 @@ async def test_add_symbol(hass):
     """Add symbol for load."""
     coordinator = YahooSymbolUpdateCoordinator([], hass, DEFAULT_SCAN_INTERVAL)
 
-    with patch("homeassistant.helpers.event.async_call_later") as mock_async_call_later:
+    with patch("homeassistant.helpers.event.async_call_later") as mock_call_later:
         assert coordinator.add_symbol(TEST_SYMBOL) is True
         assert TEST_SYMBOL in coordinator.get_symbols()
-        assert len(mock_async_call_later.mock_calls) == 1
+        assert len(mock_call_later.mock_calls) == 1
 
 
 async def test_add_symbol_existing(hass):
@@ -111,21 +121,17 @@ async def test_add_symbol_existing(hass):
     assert coordinator.add_symbol(TEST_SYMBOL) is False
 
 
-async def test_add_multiple_symbols(hass):
-    """Add multiple symbols removes existing async_call_later."""
-    coordinator = YahooSymbolUpdateCoordinator([], hass, DEFAULT_SCAN_INTERVAL)
+async def test_update_interval_when_update_fails(hass):
+    """Update interval for the next async_track_point_in_utc_time call."""
+    coordinator = YahooSymbolUpdateCoordinator(
+        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL
+    )
 
-    mock_remover = Mock()
-    with patch(
-        "homeassistant.helpers.event.async_call_later", return_value=mock_remover
-    ) as mock_async_call_later:
-        assert coordinator.add_symbol(TEST_SYMBOL) is True
-        assert TEST_SYMBOL in coordinator.get_symbols()
-        assert len(mock_async_call_later.mock_calls) == 1
+    # update_interval is DEFAULT_SCAN_INTERVAL
+    assert coordinator.get_next_update_interval() is DEFAULT_SCAN_INTERVAL
 
-        # Adding another symbol will remove existing async_call_later callback
-        assert coordinator.add_symbol(SECOND_TEST_SYMBOL) is True
-        assert SECOND_TEST_SYMBOL in coordinator.get_symbols()
-        assert len(mock_async_call_later.mock_calls) == 2
-
-        assert (len(mock_remover.mock_calls)) == 1
+    # update_interval is FAILURE_ASYNC_REQUEST_REFRESH if update failed
+    coordinator.last_update_success = False
+    assert coordinator.get_next_update_interval() == timedelta(
+        seconds=FAILURE_ASYNC_REQUEST_REFRESH
+    )
