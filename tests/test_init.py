@@ -24,9 +24,9 @@ from custom_components.yahoofinance.const import (
     SERVICE_REFRESH,
 )
 
-SAMPLE_VALID_CONFIG = {DOMAIN: {CONF_SYMBOLS: ["BABA"]}}
+SAMPLE_CONFIG = {DOMAIN: {CONF_SYMBOLS: ["BABA"]}}
 YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
-DEFAULT_PARTIAL_CONFIG = {
+DEFAULT_OPTIONAL_CONFIG = {
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
     CONF_DECIMAL_PLACES: DEFAULT_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
@@ -113,7 +113,7 @@ async def test_setup_refreshes_data_coordinator_and_loads_platform(
         assert mock_coordinator_async_refresh.call_count == 1
         assert mock_async_load_platform.call_count == 1
 
-        expected_config = DEFAULT_PARTIAL_CONFIG.copy()
+        expected_config = DEFAULT_OPTIONAL_CONFIG.copy()
         expected_config.update(expected_partial_config)
         assert expected_config == hass.data[DOMAIN][HASS_DATA_CONFIG]
 
@@ -149,50 +149,26 @@ async def test_setup_optionally_requests_coordinator_refresh(hass):
 
         mock_coordinator.return_value = mock_instance
 
-        assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
+        assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
         await hass.async_block_till_done()
 
         assert mock_coordinator.called_with(
-            SAMPLE_VALID_CONFIG[DOMAIN][CONF_SYMBOLS], hass, DEFAULT_SCAN_INTERVAL
+            SAMPLE_CONFIG[DOMAIN][CONF_SYMBOLS], hass, DEFAULT_SCAN_INTERVAL
         )
         assert mock_instance.async_refresh.call_count == 1
         assert mock_instance.async_request_refresh.call_count == 1
         assert mock_async_load_platform.call_count == 1
 
 
-async def test_setup_adds_sensor_to_hass(hass, mock_json):
-    """Component setup adds sensor to hass."""
+async def test_refresh_symbols_service(hass):
+    """Test refresh_symbols service callback."""
 
-    with patch(
-        "custom_components.yahoofinance.sensor.YahooFinanceSensor.async_added_to_hass"
-    ) as mock_async_added_to_hass, patch(
-        f"{YSUC}.get_json", AsyncMock(return_value=mock_json)
-    ):
-        assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
-        await hass.async_block_till_done()
-
-        assert mock_async_added_to_hass.call_count == 1
-
-
-async def test_setup_adds_listener_to_coordinator(hass, mock_json):
-    """Component setup adds listener to data coordinator."""
-
-    with patch(f"{YSUC}.async_add_listener", Mock()) as mock_async_add_listener, patch(
-        f"{YSUC}.get_json", AsyncMock(return_value=mock_json)
-    ):
-        assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
-        await hass.async_block_till_done()
-
-        assert mock_async_add_listener.call_count == 1
-
-
-async def test_refresh_service(hass, mock_json):
-    """Test service callback."""
-
-    with patch(f"{YSUC}.get_json", AsyncMock(return_value=mock_json)), patch(
+    with patch("homeassistant.helpers.discovery.async_load_platform"), patch(
         f"{YSUC}.async_request_refresh", AsyncMock(return_value=None)
     ) as mock_async_request_refresh:
-        assert await async_setup_component(hass, DOMAIN, SAMPLE_VALID_CONFIG) is True
+
+        assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
+        await hass.async_block_till_done()
 
         await hass.services.async_call(
             DOMAIN,

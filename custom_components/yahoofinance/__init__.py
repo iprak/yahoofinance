@@ -10,10 +10,13 @@ from typing import Union
 
 import async_timeout
 from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import callback
 from homeassistant.helpers import discovery, event
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util.dt import utcnow
 import voluptuous as vol
 
 from .const import (
@@ -162,7 +165,7 @@ async def async_setup(hass, config) -> bool:
 
 
 class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage Yahoo finance data update."""
+    """Yahoo finance data update coordinator."""
 
     @staticmethod
     def parse_symbol_data(symbol_data):
@@ -185,33 +188,53 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         self.data = None
         self.loop = hass.loop
         self.websession = async_get_clientsession(hass)
-        self._refresh_remover = None
+        self._update_interval = update_interval
+        self._failure_update_interval = timedelta(seconds=FAILURE_ASYNC_REQUEST_REFRESH)
 
         super().__init__(
             hass,
             _LOGGER,
             name="YahooSymbolUpdateCoordinator",
-            update_method=self._async_update_with_retry,
+            update_method=self._async_update,
             update_interval=update_interval,
+        )
+
+    def get_next_update_interval(self):
+        """Get the update interval for the next async_track_point_in_utc_time call."""
+        if self.last_update_success:
+            return self._update_interval
+        else:
+            _LOGGER.warning(
+                "Error obtaining data, retrying in %d seconds.",
+                FAILURE_ASYNC_REQUEST_REFRESH,
+            )
+            return self._failure_update_interval
+
+    @callback
+    def _schedule_refresh(self) -> None:
+        """Schedule a refresh."""
+        if self._unsub_refresh:
+            self._unsub_refresh()
+            self._unsub_refresh = None
+
+        # We _floor_ utcnow to create a schedule on a rounded second,
+        # minimizing the time between the point and the real activation.
+        # That way we obtain a constant update frequency,
+        # as long as the update process takes less than a second
+
+        self._unsub_refresh = async_track_point_in_utc_time(
+            self.hass,
+            self._job,
+            utcnow().replace(microsecond=0) + self.get_next_update_interval(),
         )
 
     def get_symbols(self):
         """Return symbols tracked by the coordinator."""
         return self._symbols
 
-    async def async_request_refresh_later(self, _now):
+    async def _async_request_refresh_later(self, _now):
         """Request async_request_refresh."""
         await self.async_request_refresh()
-
-    def _add_refresh_later(self, duration) -> None:
-        """Add a callback for async_call_later."""
-        if self._refresh_remover:
-            self._refresh_remover()
-            self._refresh_remover = None
-
-        self._refresh_remover = event.async_call_later(
-            self.hass, duration, self.async_request_refresh_later
-        )
 
     def add_symbol(self, symbol) -> bool:
         """Add symbol to the symbol list."""
@@ -222,7 +245,11 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             # This would have been called while data for sensor was being parsed.
             # async_request_refresh has debouncing built into it, so multiple calls
             # to add_symbol will still resut in single refresh.
-            self._add_refresh_later(DELAY_ASYNC_REQUEST_REFRESH)
+            event.async_call_later(
+                self.hass,
+                DELAY_ASYNC_REQUEST_REFRESH,
+                self._async_request_refresh_later,
+            )
 
             _LOGGER.info(
                 "Added %s and requested update in %d seconds.",
@@ -286,16 +313,3 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
 
         _LOGGER.info("Data updated")
         return data
-
-    async def _async_update_with_retry(self):
-        """Update data or set up a retry."""
-
-        try:
-            return await self._async_update()
-        except:  # noqa: E722 pylint: disable=bare-except:
-            _LOGGER.warning(
-                "Error obtaining data, retrying in %d seconds.",
-                FAILURE_ASYNC_REQUEST_REFRESH,
-            )
-            self._add_refresh_later(FAILURE_ASYNC_REQUEST_REFRESH)
-            raise
