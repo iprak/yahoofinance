@@ -12,8 +12,13 @@ logger:
 
 yahoofinance:
   show_trending_icon: True
-  #scan_interval: 15
+
+  #Interval too small - will throw an error
+  #scan_interval: 30
+
+  #Update disabled
   #scan_interval: None
+
   symbols:
     - symbol: GBPUSD=X
     - symbol: IDFCBANK.BO
