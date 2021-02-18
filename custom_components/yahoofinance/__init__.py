@@ -222,11 +222,13 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         # That way we obtain a constant update frequency,
         # as long as the update process takes less than a second
 
-        self._unsub_refresh = async_track_point_in_utc_time(
-            self.hass,
-            self._job,
-            utcnow().replace(microsecond=0) + self.get_next_update_interval(),
-        )
+        update_interval = self.get_next_update_interval()
+        if update_interval is not None:
+            self._unsub_refresh = async_track_point_in_utc_time(
+                self.hass,
+                self._job,
+                utcnow().replace(microsecond=0) + update_interval,
+            )
 
     def get_symbols(self):
         """Return symbols tracked by the coordinator."""

@@ -135,3 +135,16 @@ async def test_update_interval_when_update_fails(hass):
     assert coordinator.get_next_update_interval() == timedelta(
         seconds=FAILURE_ASYNC_REQUEST_REFRESH
     )
+
+
+async def test_update_when_update_is_disabled(hass):
+    """No update is performed if update_interval is None."""
+    coordinator = YahooSymbolUpdateCoordinator([TEST_SYMBOL], hass, None)
+
+    coordinator.last_update_success = False
+    assert coordinator.get_next_update_interval() == timedelta(
+        seconds=FAILURE_ASYNC_REQUEST_REFRESH
+    )
+
+    coordinator.last_update_success = True
+    assert coordinator.get_next_update_interval() is None
