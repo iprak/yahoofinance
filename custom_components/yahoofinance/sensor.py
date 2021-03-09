@@ -28,6 +28,7 @@ from .const import (
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
+    DATA_MARKET_STATE,
     DEFAULT_CURRENCY,
     DEFAULT_ICON,
     DOMAIN,
@@ -68,6 +69,7 @@ class YahooFinanceSensor(Entity):
     _icon = DEFAULT_ICON
     _market_price = None
     _short_name = None
+    _market_state = None
     _target_currency = None
     _original_currency = None
 
@@ -91,6 +93,7 @@ class YahooFinanceSensor(Entity):
             ATTR_SYMBOL: symbol,
             ATTR_QUOTE_TYPE: None,
             ATTR_QUOTE_SOURCE_NAME: None,
+            ATTR_MARKET_STATE: None,
         }
 
         # Initialize all numeric attributes to None
@@ -210,7 +213,7 @@ class YahooFinanceSensor(Entity):
         self._original_currency = self._get_original_currency(symbol_data)
         conversion = self._get_target_currency_conversion()
 
-        self._short_name = symbol_data[DATA_SHORT_NAME]
+        self._short_name = symbol_data[DATA_SHORT_NAME
         self._market_price = self.safe_convert(
             symbol_data[DATA_REGULAR_MARKET_PRICE], conversion
         )
@@ -231,6 +234,7 @@ class YahooFinanceSensor(Entity):
         # Add some other string attributes
         self._attributes[ATTR_QUOTE_TYPE] = symbol_data[DATA_QUOTE_TYPE]
         self._attributes[ATTR_QUOTE_SOURCE_NAME] = symbol_data[DATA_QUOTE_SOURCE_NAME]
+        self._attributes[ATTR_MARKET_STATE] = symbol_data[DATA_MARKET_STATE]
 
         # Use target_currency if we have conversion data. Otherwise keep using the
         # currency from data.
