@@ -70,7 +70,6 @@ class YahooFinanceSensor(Entity):
     _icon = DEFAULT_ICON
     _market_price = None
     _short_name = None
-    _market_state = None
     _target_currency = None
     _original_currency = None
 
