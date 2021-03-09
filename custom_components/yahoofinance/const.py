@@ -6,6 +6,7 @@ ATTR_QUOTE_TYPE = "quoteType"
 ATTR_QUOTE_SOURCE_NAME = "quoteSourceName"
 ATTR_SYMBOL = "symbol"
 ATTR_TRENDING = "trending"
+ATTR_MARKET_STATE = "marketState"
 
 # Hass data
 HASS_DATA_CONFIG = "config"
