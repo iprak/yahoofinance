@@ -17,6 +17,7 @@ DATA_FINANCIAL_CURRENCY = "financialCurrency"
 DATA_QUOTE_TYPE = "quoteType"
 DATA_QUOTE_SOURCE_NAME = "quoteSourceName"
 DATA_SHORT_NAME = "shortName"
+DATA_MARKET_STATE = "marketState"
 
 DATA_REGULAR_MARKET_PREVIOUS_CLOSE = "regularMarketPreviousClose"
 DATA_REGULAR_MARKET_PRICE = "regularMarketPrice"
@@ -48,6 +49,7 @@ STRING_DATA_KEYS = [
     DATA_QUOTE_TYPE,
     DATA_QUOTE_SOURCE_NAME,
     DATA_SHORT_NAME,
+    DATA_MARKET_STATE,
 ]
 
 
