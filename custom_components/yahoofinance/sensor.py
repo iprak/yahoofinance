@@ -214,7 +214,7 @@ class YahooFinanceSensor(Entity):
         self._original_currency = self._get_original_currency(symbol_data)
         conversion = self._get_target_currency_conversion()
 
-        self._short_name = symbol_data[DATA_SHORT_NAME
+        self._short_name = symbol_data[DATA_SHORT_NAME]
         self._market_price = self.safe_convert(
             symbol_data[DATA_REGULAR_MARKET_PRICE], conversion
         )
