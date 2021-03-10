@@ -41,6 +41,7 @@ NUMERIC_DATA_KEYS = [
     (DATA_REGULAR_MARKET_PREVIOUS_CLOSE, True),
     (DATA_REGULAR_MARKET_PRICE, True),
     ("regularMarketVolume", False),
+    ("regularMarketTime", False),
     ("twoHundredDayAverage", True),
     ("twoHundredDayAverageChange", True),
     ("twoHundredDayAverageChangePercent", False),
