@@ -7,6 +7,8 @@ ATTR_QUOTE_SOURCE_NAME = "quoteSourceName"
 ATTR_SYMBOL = "symbol"
 ATTR_TRENDING = "trending"
 ATTR_MARKET_STATE = "marketState"
+ATTR_POST_MARKET_TIME = "postMarketTime"
+ATTR_PRE_MARKET_TIME = "preMarketTime"
 
 # Hass data
 HASS_DATA_CONFIG = "config"
@@ -19,6 +21,8 @@ DATA_QUOTE_TYPE = "quoteType"
 DATA_QUOTE_SOURCE_NAME = "quoteSourceName"
 DATA_SHORT_NAME = "shortName"
 DATA_MARKET_STATE = "marketState"
+DATA_POST_MARKET_TIME = "postMarketTime"
+DATA_PRE_MARKET_TIME = "preMarketTime"
 
 DATA_REGULAR_MARKET_PREVIOUS_CLOSE = "regularMarketPreviousClose"
 DATA_REGULAR_MARKET_PRICE = "regularMarketPrice"
@@ -51,6 +55,8 @@ STRING_DATA_KEYS = [
     DATA_QUOTE_SOURCE_NAME,
     DATA_SHORT_NAME,
     DATA_MARKET_STATE,
+    DATA_POST_MARKET_TIME,
+    DATA_PRE_MARKET_TIME,
 ]
 
 
