@@ -16,6 +16,8 @@ from .const import (
     ATTR_SYMBOL,
     ATTR_TRENDING,
     ATTR_MARKET_STATE,
+    ATTR_POST_MARKET_TIME,
+    ATTR_PRE_MARKET_TIME,
     ATTRIBUTION,
     CONF_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON,
@@ -30,6 +32,8 @@ from .const import (
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
     DATA_MARKET_STATE,
+    DATA_POST_MARKET_TIME,
+    DATA_PRE_MARKET_TIME,
     DEFAULT_CURRENCY,
     DEFAULT_ICON,
     DOMAIN,
@@ -235,6 +239,8 @@ class YahooFinanceSensor(Entity):
         self._attributes[ATTR_QUOTE_TYPE] = symbol_data[DATA_QUOTE_TYPE]
         self._attributes[ATTR_QUOTE_SOURCE_NAME] = symbol_data[DATA_QUOTE_SOURCE_NAME]
         self._attributes[ATTR_MARKET_STATE] = symbol_data[DATA_MARKET_STATE]
+        self._attributes[ATTR_POST_MARKET_TIME] = symbol_data[DATA_POST_MARKET_TIME]
+        self._attributes[ATTR_PRE_MARKET_TIME] = symbol_data[DATA_PRE_MARKET_TIME]
 
         # Use target_currency if we have conversion data. Otherwise keep using the
         # currency from data.
