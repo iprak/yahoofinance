@@ -226,7 +226,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         if update_interval is not None:
             self._unsub_refresh = async_track_point_in_utc_time(
                 self.hass,
-                self._job,
+                self._handle_refresh_interval,
                 utcnow().replace(microsecond=0) + update_interval,
             )
 
