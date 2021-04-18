@@ -11,7 +11,7 @@ logger:
     custom_components.yahoofinance: debug
 
 yahoofinance:
-  show_trending_icon: True
+  show_trending_icon: true
 
   #Interval too small - will throw an error
   #scan_interval: 30

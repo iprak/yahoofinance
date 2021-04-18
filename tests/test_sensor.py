@@ -13,6 +13,10 @@ from custom_components.yahoofinance.const import (
     ATTR_CURRENCY_SYMBOL,
     ATTR_TRENDING,
     CONF_DECIMAL_PLACES,
+    CONF_INCLUDE_FIFTY_DAY_VALUES,
+    CONF_INCLUDE_POST_VALUES,
+    CONF_INCLUDE_PRE_VALUES,
+    CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CONF_TARGET_CURRENCY,
@@ -20,14 +24,18 @@ from custom_components.yahoofinance.const import (
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
+    DEFAULT_CONF_DECIMAL_PLACES,
+    DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
+    DEFAULT_CONF_INCLUDE_POST_VALUES,
+    DEFAULT_CONF_INCLUDE_PRE_VALUES,
+    DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
-    DEFAULT_DECIMAL_PLACES,
     DOMAIN,
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATOR,
-    NUMERIC_DATA_KEYS,
+    NUMERIC_DATA_GROUPS,
 )
 from custom_components.yahoofinance.sensor import (
     YahooFinanceSensor,
@@ -35,9 +43,14 @@ from custom_components.yahoofinance.sensor import (
 )
 
 DEFAULT_OPTIONAL_CONFIG = {
+    CONF_DECIMAL_PLACES: DEFAULT_CONF_DECIMAL_PLACES,
+    CONF_INCLUDE_FIFTY_DAY_VALUES: DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
+    CONF_INCLUDE_POST_VALUES: DEFAULT_CONF_INCLUDE_POST_VALUES,
+    CONF_INCLUDE_PRE_VALUES: DEFAULT_CONF_INCLUDE_PRE_VALUES,
+    CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
-    CONF_DECIMAL_PLACES: DEFAULT_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
+    "numeric_values_to_include": ["default"],
 }
 
 YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
@@ -133,10 +146,11 @@ def test_sensor_creation(
     assert attributes[ATTR_TRENDING] == "up"
 
     # All numeric values besides DATA_REGULAR_MARKET_PRICE should be 0
-    for value in NUMERIC_DATA_KEYS:
-        key = value[0]
-        if key != DATA_REGULAR_MARKET_PRICE:
-            assert attributes[key] == 0
+    for numeric_data_key in NUMERIC_DATA_GROUPS:
+        for value in NUMERIC_DATA_GROUPS[numeric_data_key]:
+            key = value[0]
+            if key != DATA_REGULAR_MARKET_PRICE:
+                assert attributes[key] == 0
 
     # Since we did not provide any data so currency should be the default value
     assert sensor.unit_of_measurement == DEFAULT_CURRENCY
