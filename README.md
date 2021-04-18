@@ -27,28 +27,35 @@ currencySymbol: $
 symbol: ISTNX
 quoteType: MUTUALFUND
 quoteSourceName: Delayed Quote
-averageDailyVolume10Day: 16
-averageDailyVolume3Month: 1745
-fiftyDayAverage: 284.3
-fiftyDayAverageChange: -17.09
-fiftyDayAverageChangePercent: -0.0
-postMarketChange: -0.03
-postMarketChangePercent: -0.1
-postMarketPrice: 267.
-regularMarketChange: 0.34
-regularMarketChangePercent: 0.13
-regularMarketDayHigh: 27
-regularMarketDayLow: 26
-regularMarketPreviousClose: 26
-regularMarketPrice: 267.25
-regularMarketVolume: 14
-twoHundredDayAverage: 261.2
-twoHundredDayAverageChange: 6.0
-twoHundredDayAverageChangePercent: 0.02
+marketState: CLOSED
+averageDailyVolume10Day: 0
+averageDailyVolume3Month: 0
+regularMarketChange: 0.26
+regularMarketChangePercent: 0.23
+regularMarketDayHigh: 0
+regularMarketDayLow: 0
+regularMarketPreviousClose: 12.63
+regularMarketPrice: 12.89
+regularMarketVolume: 0
+regularMarketTime: 1618617625
+fiftyDayAverage: 107.54
+fiftyDayAverageChange: 5.35
+fiftyDayAverageChangePercent: 0.05
+preMarketChange: 0
+preMarketChangePercent: 0
+preMarketTime: 0
+preMarketPrice: 0
+postMarketChange: 0
+postMarketChangePercent: 0
+postMarketPrice: 0
+postMarketTime: 0
+twoHundredDayAverage: 14.69
+twoHundredDayAverageChange: 8.2
+twoHundredDayAverageChangePercent: 0.08
 trending: up
 unit_of_measurement: USD
-friendly_name: ...
-icon: 'mdi:trending-up'
+friendly_name: Ivy Science & Technology Fund C
+icon: mdi:trending-up
 ```
 
 ## Optional Configuration
@@ -78,6 +85,13 @@ icon: 'mdi:trending-up'
 
   If data for the target currency is not found, then the display will remain in original currency. The conversion is only applied on the attributes representing prices.
 
+- The fifty_day, post, pre and two_hundred attributes can be suppressed as following. They are included by default.
+  ```yaml
+  include_fifty_day_values: false
+  include_post_values: false
+  include_pre_values: false
+  include_two_hundred_day_values: false
+  ```
 
 ## Examples
 - The symbol can also represent a financial index such as [this](https://finance.yahoo.com/world-indices/).
