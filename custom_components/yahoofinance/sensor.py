@@ -157,6 +157,10 @@ class YahooFinanceSensor(Entity):
         value = None
 
         if self._target_currency and self._original_currency:
+            if self._target_currency == self._original_currency:
+                _LOGGER.debug("%s No conversion necessary", self._symbol)
+                return None
+
             conversion_symbol = (
                 f"{self._original_currency}{self._target_currency}=X".upper()
             )
