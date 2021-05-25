@@ -186,15 +186,16 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
                 symbol_requested = self._symbols[pos]
                 pos += 1
 
-            # Sometimes data for USDEUR=X just contains EUR=X so using requested
+                if symbol_requested != symbol_received:
+                    _LOGGER.warning(
+                        "Requested data for %s and received %s",
+                        symbol_requested,
+                        symbol_received,
+                    )
+
+            # Sometimes data for USDEUR=X just contains EUR=X, giving preference to the requested
             # symbol instead of symbol from data.
             symbol = symbol_requested or symbol_received
-
-            _LOGGER.debug(
-                "Requested data for %s and received %s",
-                symbol_requested,
-                symbol_received,
-            )
 
             data[symbol] = self.parse_symbol_data(symbol_data)
 

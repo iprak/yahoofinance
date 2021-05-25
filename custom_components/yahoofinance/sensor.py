@@ -158,7 +158,7 @@ class YahooFinanceSensor(Entity):
 
         if self._target_currency and self._original_currency:
             if self._target_currency == self._original_currency:
-                _LOGGER.debug("%s No conversion necessary", self._symbol)
+                _LOGGER.info("%s No conversion necessary", self._symbol)
                 return None
 
             conversion_symbol = (
@@ -230,7 +230,7 @@ class YahooFinanceSensor(Entity):
         # _market_price gets rounded in the `state` getter.
 
         if conversion:
-            _LOGGER.debug(
+            _LOGGER.info(
                 "%s converted %s X %s = %s",
                 self._symbol,
                 market_price,
