@@ -9,10 +9,10 @@ import pytest
 
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,
-    FAILURE_ASYNC_REQUEST_REFRESH,
     YahooSymbolUpdateCoordinator,
 )
 from custom_components.yahoofinance.const import DATA_REGULAR_MARKET_PRICE
+from custom_components.yahoofinance.coordinator import FAILURE_ASYNC_REQUEST_REFRESH
 
 TEST_SYMBOL = "BABA"
 SECOND_TEST_SYMBOL = "^SSMI"
