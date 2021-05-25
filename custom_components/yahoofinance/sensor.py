@@ -157,6 +157,10 @@ class YahooFinanceSensor(Entity):
         value = None
 
         if self._target_currency and self._original_currency:
+            if self._target_currency == self._original_currency:
+                _LOGGER.info("%s No conversion necessary", self._symbol)
+                return None
+
             conversion_symbol = (
                 f"{self._original_currency}{self._target_currency}=X".upper()
             )
@@ -167,10 +171,13 @@ class YahooFinanceSensor(Entity):
 
                 if symbol_data is not None:
                     value = symbol_data[DATA_REGULAR_MARKET_PRICE]
-                    _LOGGER.debug(
-                        "%s conversion %s=%s", self._symbol, conversion_symbol, value
-                    )
+                    _LOGGER.debug("%s %s is %s", self._symbol, conversion_symbol, value)
                 else:
+                    _LOGGER.debug(
+                        "%s No data found for %s",
+                        self._symbol,
+                        conversion_symbol,
+                    )
                     self._coordinator.add_symbol(conversion_symbol)
 
         return value
@@ -218,13 +225,17 @@ class YahooFinanceSensor(Entity):
 
         self._short_name = symbol_data[DATA_SHORT_NAME]
 
-        self._market_price = self.safe_convert(
-            symbol_data[DATA_REGULAR_MARKET_PRICE], conversion
-        )
+        market_price = symbol_data[DATA_REGULAR_MARKET_PRICE]
+        self._market_price = self.safe_convert(market_price, conversion)
         # _market_price gets rounded in the `state` getter.
+
         if conversion:
-            _LOGGER.debug(
-                "%s market_price converted to %s", self._symbol, self._market_price
+            _LOGGER.info(
+                "%s converted %s X %s = %s",
+                self._symbol,
+                market_price,
+                conversion,
+                self._market_price,
             )
 
         self._previous_close = self.safe_convert(
