@@ -5,6 +5,7 @@ https://github.com/iprak/yahoofinance
 """
 
 import logging
+from timeit import default_timer as timer
 
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
@@ -68,6 +69,7 @@ class YahooFinanceSensor(Entity):
     _short_name = None
     _target_currency = None
     _original_currency = None
+    _last_available_timer = None
 
     def __init__(self, hass, coordinator, symbol_definition, domain_config) -> None:
         """Initialize the sensor."""
@@ -191,7 +193,13 @@ class YahooFinanceSensor(Entity):
             return value
         return value * conversion
 
-    def _get_original_currency(self, symbol_data):
+    def _update_original_currency(self, symbol_data) -> bool:
+        """Update the original currency."""
+
+        # Symbol currency does not change so calculate it only once
+        if self._original_currency is not None:
+            return
+
         # Prefer currency over financialCurrency, for foreign symbols financialCurrency
         # can represent the remote currency. But financialCurrency can also be None.
         financial_currency = symbol_data[DATA_FINANCIAL_CURRENCY]
@@ -204,10 +212,9 @@ class YahooFinanceSensor(Entity):
             financial_currency,
         )
 
-        currency = currency or financial_currency or DEFAULT_CURRENCY
-        return currency
+        self._original_currency = currency or financial_currency or DEFAULT_CURRENCY
 
-    def _update_data(self) -> None:
+    def _update_properties(self) -> None:
         """Update local fields."""
 
         data = self._coordinator.data
@@ -220,7 +227,7 @@ class YahooFinanceSensor(Entity):
             _LOGGER.debug("%s Symbol data is None", self._symbol)
             return
 
-        self._original_currency = self._get_original_currency(symbol_data)
+        self._update_original_currency(symbol_data)
         conversion = self._get_target_currency_conversion()
 
         self._short_name = symbol_data[DATA_SHORT_NAME]
@@ -299,7 +306,17 @@ class YahooFinanceSensor(Entity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        self._update_data()
+
+        current_timer = timer()
+
+        # Limit data update if available was invoked within 400 ms.
+        # This matched the slow entity reporting done in Entity.
+        if (self._last_available_timer is None) or (
+            (current_timer - self._last_available_timer) > 0.4
+        ):
+            self._update_properties()
+            self._last_available_timer = current_timer
+
         return self._coordinator.last_update_success
 
     async def async_added_to_hass(self) -> None:
