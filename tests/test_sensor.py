@@ -1,6 +1,6 @@
 """Tests for Yahoo Finance component."""
 import copy
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 import pytest
@@ -20,7 +20,7 @@ from custom_components.yahoofinance.const import (
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CONF_TARGET_CURRENCY,
-    DATA_FINANCIAL_CURRENCY,
+    DATA_CURRENCY_SYMBOL,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
@@ -56,10 +56,14 @@ DEFAULT_OPTIONAL_CONFIG = {
 YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 
 
-def build_mock_symbol_data(symbol, market_price, currency="USD"):
+def build_mock_symbol_data(
+    symbol,
+    market_price,
+    currency="USD",
+):
     """Build mock data for a symbol."""
     source_data = {
-        DATA_FINANCIAL_CURRENCY: currency,
+        DATA_CURRENCY_SYMBOL: currency,
         DATA_SHORT_NAME: f"Symbol {symbol}",
         DATA_REGULAR_MARKET_PRICE: market_price,
     }
@@ -341,7 +345,7 @@ async def test_data_from_json(hass, mock_json):
     "value,conversion,expected",
     [(123.5, 1, 123.5), (None, 1, None), (123.5, None, 123.5)],
 )
-def test_safe_convert(hass, value, conversion, expected):
+def test_safe_convert(value, conversion, expected):
     """Test value conversion."""
     assert YahooFinanceSensor.safe_convert(value, conversion) == expected
 
@@ -390,6 +394,52 @@ def test_conversion_requests_additional_data_from_coordinator(hass):
         assert sensor.available is True
 
         assert mock_add_symbol.call_count == 1
+
+
+def test_conversion_not_attempted_if_target_currency_same(hass):
+    """No conversion is attempted if target curency is the same as symbol currency."""
+
+    symbol = "XYZ"
+    mock_coordinator = build_mock_coordinator(hass, True, symbol, 12)
+
+    # Force update _previous_close to None
+    mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+
+    sensor = YahooFinanceSensor(
+        hass,
+        mock_coordinator,
+        {"symbol": symbol, CONF_TARGET_CURRENCY: "USD"},
+        DEFAULT_OPTIONAL_CONFIG,
+    )
+
+    with patch.object(mock_coordinator, "add_symbol") as mock_add_symbol:
+        # Accessing `available` triggers data population
+        assert sensor.available is True
+
+        # The mock data has currency USD and target is USD too.
+        assert mock_add_symbol.call_count == 0
+
+
+def test_repeated_available(hass):
+    """Test repeated calls to available."""
+
+    symbol = "XYZ"
+    market_price = 12
+    symbol_data = build_mock_symbol_data(symbol, market_price)
+    # symbol_data[DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = market_price
+
+    mock_coordinator = Mock()
+    mock_data = PropertyMock(return_value=symbol_data)
+    type(mock_coordinator).data = mock_data
+
+    sensor = YahooFinanceSensor(
+        hass, mock_coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
+    )
+
+    # Calling available in quick successions results in property updates once
+    assert sensor.available
+    assert sensor.available
+    assert mock_data.call_count == 1
 
 
 async def test_setup_listener_registration(hass):
