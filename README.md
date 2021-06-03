@@ -19,7 +19,7 @@ yahoofinance:
     - ISTNX
 ```
 
-The above configuration will generate an entity with the id `yahoofinance.istnx` and current value as the state along with these attributes:
+The above configuration will generate an entity with the id `sensor.yahoofinance_istnx` and current value as the state along with these attributes:
 
 ```
 attribution: Data provided by Yahoo Finance
@@ -133,5 +133,6 @@ The component exposes the service `yahoofinance.refresh_symbols` which can be us
 
 # Breaking Changes
 
+- As of version [1.1.0](https://github.com/iprak/yahoofinance/releases/), the entity id has changed from `yahoofinance.symbol` to `sensor.yahoofinance_symbol`.
 - As of version 1.0.0, all the configuration is now under `yahoofinance`. If you are upgrading from an older version, then you would need to adjust the configuration.
 - As of version 1.0.1, the minimum `scan_interval` is 30 seconds.
