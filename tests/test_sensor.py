@@ -20,7 +20,6 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
-    CONF_TARGET_CURRENCY,
     DATA_CURRENCY_SYMBOL,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
@@ -151,8 +150,8 @@ def test_sensor_creation(
     assert attributes[ATTR_TRENDING] == "up"
 
     # All numeric values besides DATA_REGULAR_MARKET_PRICE should be 0
-    for numeric_data_key in NUMERIC_DATA_GROUPS:
-        for value in NUMERIC_DATA_GROUPS[numeric_data_key]:
+    for data_group in NUMERIC_DATA_GROUPS.values():
+        for value in data_group:
             key = value[0]
             if key != DATA_REGULAR_MARKET_PRICE:
                 assert attributes[key] == 0

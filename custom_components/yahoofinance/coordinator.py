@@ -38,8 +38,8 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         data = {}
 
         # get() ensures that we have an entry in symbol_data.
-        for group in NUMERIC_DATA_GROUPS:
-            for value in NUMERIC_DATA_GROUPS[group]:
+        for data_group in NUMERIC_DATA_GROUPS.values():
+            for value in data_group:
                 key = value[0]
                 data[key] = symbol_data.get(key, 0)
 
