@@ -11,6 +11,7 @@ import voluptuous as vol
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,
     MINIMUM_SCAN_INTERVAL,
+    SymbolDefinition,
     parse_scan_interval,
 )
 from custom_components.yahoofinance.const import (
@@ -51,26 +52,26 @@ DEFAULT_OPTIONAL_CONFIG = {
         (
             # Normalize test
             {CONF_SYMBOLS: ["xyz"]},
-            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ")]},
         ),
         (
             # Another normalize test
             {CONF_SYMBOLS: [{"symbol": "xyz"}]},
-            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ")]},
         ),
         (
             {CONF_SYMBOLS: [{"symbol": "xyz"}, "abc"]},
-            {CONF_SYMBOLS: [{"symbol": "XYZ"}, {"symbol": "ABC"}]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ"), SymbolDefinition("ABC")]},
         ),
         (
             # Duplicate removal test
             {CONF_SYMBOLS: ["xyz", "xyz"]},
-            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ")]},
         ),
         (
             # Another duplicate removal test
             {CONF_SYMBOLS: [{"symbol": "xyz"}, "xyz"]},
-            {CONF_SYMBOLS: [{"symbol": "XYZ"}]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ")]},
         ),
         (
             {
@@ -79,7 +80,7 @@ DEFAULT_OPTIONAL_CONFIG = {
                 CONF_DECIMAL_PLACES: 3,
             },
             {
-                CONF_SYMBOLS: [{"symbol": "XYZ"}],
+                CONF_SYMBOLS: [SymbolDefinition("XYZ")],
                 CONF_SCAN_INTERVAL: timedelta(hours=1),
                 CONF_DECIMAL_PLACES: 3,
             },
@@ -90,7 +91,7 @@ DEFAULT_OPTIONAL_CONFIG = {
                 CONF_SCAN_INTERVAL: "None",
             },
             {
-                CONF_SYMBOLS: [{"symbol": "XYZ"}],
+                CONF_SYMBOLS: [SymbolDefinition("XYZ")],
                 CONF_SCAN_INTERVAL: None,
             },
         ),
@@ -100,34 +101,28 @@ DEFAULT_OPTIONAL_CONFIG = {
                 CONF_SCAN_INTERVAL: "none",
             },
             {
-                CONF_SYMBOLS: [{"symbol": "XYZ"}],
+                CONF_SYMBOLS: [SymbolDefinition("XYZ")],
                 CONF_SCAN_INTERVAL: None,
             },
         ),
     ],
 )
 async def test_setup_refreshes_data_coordinator_and_loads_platform(
-    hass, domain_config, expected_partial_config
+    hass, domain_config, expected_partial_config, enable_custom_integrations
 ):
     """Component setup refreshed data coordinator and loads the platform."""
 
-    with patch(
-        "homeassistant.helpers.discovery.async_load_platform"
-    ) as mock_async_load_platform, patch(
-        f"{YSUC}.async_refresh", AsyncMock(return_value=None)
-    ) as mock_coordinator_async_refresh:
+    config = {DOMAIN: domain_config}
 
-        config = {DOMAIN: domain_config}
+    assert await async_setup_component(hass, DOMAIN, config) is True
+    await hass.async_block_till_done()
 
-        assert await async_setup_component(hass, DOMAIN, config) is True
-        await hass.async_block_till_done()
+    assert DOMAIN in hass.data
 
-        assert mock_coordinator_async_refresh.call_count == 1
-        assert mock_async_load_platform.call_count == 1
+    expected_config = DEFAULT_OPTIONAL_CONFIG.copy()
+    expected_config.update(expected_partial_config)
 
-        expected_config = DEFAULT_OPTIONAL_CONFIG.copy()
-        expected_config.update(expected_partial_config)
-        assert expected_config == hass.data[DOMAIN][HASS_DATA_CONFIG]
+    assert expected_config == hass.data[DOMAIN][HASS_DATA_CONFIG]
 
 
 @pytest.mark.parametrize(
@@ -145,13 +140,12 @@ def test_invalid_scan_interval(hass, scan_interval):
         parse_scan_interval(scan_interval)
 
 
-async def test_setup_optionally_requests_coordinator_refresh(hass):
+async def test_setup_optionally_requests_coordinator_refresh(
+    hass, enable_custom_integrations
+):
     """Component setup requests data coordinator refresh if it failed to load data."""
 
-    with patch(
-        "homeassistant.helpers.discovery.async_load_platform"
-    ) as mock_async_load_platform, patch(YSUC) as mock_coordinator:
-
+    with patch(YSUC) as mock_coordinator:
         mock_instance = Mock()
         mock_instance.async_refresh = AsyncMock(return_value=None)
         mock_instance.async_request_refresh = AsyncMock(return_value=None)
@@ -169,13 +163,12 @@ async def test_setup_optionally_requests_coordinator_refresh(hass):
         )
         assert mock_instance.async_refresh.call_count == 1
         assert mock_instance.async_request_refresh.call_count == 1
-        assert mock_async_load_platform.call_count == 1
 
 
-async def test_refresh_symbols_service(hass):
+async def test_refresh_symbols_service(hass, enable_custom_integrations):
     """Test refresh_symbols service callback."""
 
-    with patch("homeassistant.helpers.discovery.async_load_platform"), patch(
+    with patch(
         f"{YSUC}.async_request_refresh", AsyncMock(return_value=None)
     ) as mock_async_request_refresh:
 
@@ -191,3 +184,12 @@ async def test_refresh_symbols_service(hass):
         await hass.async_block_till_done()
 
         assert mock_async_request_refresh.call_count == 1
+
+
+def test_SymbolDefinition_comparison():
+    """Test SymbolDefinition instance comparison."""
+    sym1 = SymbolDefinition("ABC")
+    sym2 = SymbolDefinition("ABC")
+    assert sym1 == sym2
+    assert hash(sym1) == hash(sym2)
+    assert str(sym1) == str(sym2)

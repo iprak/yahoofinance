@@ -4,12 +4,19 @@ A component which presents Yahoo Finance stock quotes.
 https://github.com/iprak/yahoofinance
 """
 
+from collections.abc import Mapping
 import logging
 from timeit import default_timer as timer
+from typing import Any, Union
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant.helpers.entity import Entity, async_generate_entity_id
+from homeassistant.helpers.entity import async_generate_entity_id
+from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from custom_components.yahoofinance import SymbolDefinition
+from custom_components.yahoofinance.coordinator import YahooSymbolUpdateCoordinator
 
 from .const import (
     ATTR_CURRENCY_SYMBOL,
@@ -22,7 +29,6 @@ from .const import (
     CONF_DECIMAL_PLACES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
-    CONF_TARGET_CURRENCY,
     CURRENCY_CODES,
     DATA_CURRENCY_SYMBOL,
     DATA_FINANCIAL_CURRENCY,
@@ -45,23 +51,23 @@ _LOGGER = logging.getLogger(__name__)
 ENTITY_ID_FORMAT = SENSOR_DOMAIN + "." + DOMAIN + "_{}"
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(hass, _config, async_add_entities, _discovery_info=None):
     """Set up the Yahoo Finance sensor platform."""
 
     coordinator = hass.data[DOMAIN][HASS_DATA_COORDINATOR]
     domain_config = hass.data[DOMAIN][HASS_DATA_CONFIG]
-    symbols = domain_config[CONF_SYMBOLS]
+    symbol_definitions: list[SymbolDefinition] = domain_config[CONF_SYMBOLS]
 
     sensors = [
         YahooFinanceSensor(hass, coordinator, symbol, domain_config)
-        for symbol in symbols
+        for symbol in symbol_definitions
     ]
 
     async_add_entities(sensors, update_before_add=False)
-    _LOGGER.info("Entities added for %s", [item["symbol"] for item in symbols])
+    _LOGGER.info("Entities added for %s", [item.symbol for item in symbol_definitions])
 
 
-class YahooFinanceSensor(Entity):
+class YahooFinanceSensor(CoordinatorEntity):
     """Represents a Yahoo finance entity."""
 
     _currency = DEFAULT_CURRENCY
@@ -72,16 +78,22 @@ class YahooFinanceSensor(Entity):
     _original_currency = None
     _last_available_timer = None
 
-    def __init__(self, hass, coordinator, symbol_definition, domain_config) -> None:
-        """Initialize the sensor."""
-        symbol = symbol_definition.get("symbol")
-        self._hass = hass
+    def __init__(
+        self,
+        hass,
+        coordinator: YahooSymbolUpdateCoordinator,
+        symbol_definition: SymbolDefinition,
+        domain_config,
+    ) -> None:
+        """Initialize the YahooFinance entity."""
+        super().__init__(coordinator)
+
+        symbol = symbol_definition.symbol
         self._symbol = symbol
-        self._coordinator = coordinator
         self._show_trending_icon = domain_config[CONF_SHOW_TRENDING_ICON]
         self._decimal_places = domain_config[CONF_DECIMAL_PLACES]
         self._previous_close = None
-        self._target_currency = symbol_definition.get(CONF_TARGET_CURRENCY)
+        self._target_currency = symbol_definition.target_currency
 
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
 
@@ -96,6 +108,8 @@ class YahooFinanceSensor(Entity):
 
         # List of groups to include as attributes
         self._numeric_data_to_include = []
+
+        # pylint: disable=consider-using-dict-items
 
         # Initialize all numeric attributes which we want to include to None
         for group in NUMERIC_DATA_GROUPS:
@@ -120,12 +134,7 @@ class YahooFinanceSensor(Entity):
         return self._symbol
 
     @property
-    def should_poll(self) -> bool:
-        """No need to poll. Coordinator notifies entity of updates."""
-        return False
-
-    @property
-    def state(self):
+    def state(self) -> StateType:
         """Return the state of the sensor."""
         return self._round(self._market_price)
 
@@ -135,7 +144,7 @@ class YahooFinanceSensor(Entity):
         return self._currency
 
     @property
-    def device_state_attributes(self):
+    def device_state_attributes(self) -> Union[Mapping[str, Any], None]:
         """Return the state attributes."""
         return self._attributes
 
@@ -144,7 +153,7 @@ class YahooFinanceSensor(Entity):
         """Return the icon to use in the frontend, if any."""
         return self._icon
 
-    def _round(self, value):
+    def _round(self, value: Union[float, None]) -> Union[float, int, None]:
         """Return formatted value based on decimal_places."""
         if value is None:
             return None
@@ -156,7 +165,7 @@ class YahooFinanceSensor(Entity):
 
         return round(value, self._decimal_places)
 
-    def _get_target_currency_conversion(self) -> float:
+    def _get_target_currency_conversion(self) -> Union[float, None]:
         value = None
 
         if self._target_currency and self._original_currency:
@@ -167,7 +176,7 @@ class YahooFinanceSensor(Entity):
             conversion_symbol = (
                 f"{self._original_currency}{self._target_currency}=X".upper()
             )
-            data = self._coordinator.data
+            data = self.coordinator.data
 
             if data is not None:
                 symbol_data = data.get(conversion_symbol)
@@ -181,12 +190,14 @@ class YahooFinanceSensor(Entity):
                         self._symbol,
                         conversion_symbol,
                     )
-                    self._coordinator.add_symbol(conversion_symbol)
+                    self.coordinator.add_symbol(conversion_symbol)
 
         return value
 
     @staticmethod
-    def safe_convert(value, conversion):
+    def safe_convert(
+        value: Union[float, None], conversion: Union[float, None]
+    ) -> Union[float, None]:
         """Return the converted value. The original value is returned if there is no conversion."""
         if value is None:
             return None
@@ -218,7 +229,7 @@ class YahooFinanceSensor(Entity):
     def _update_properties(self) -> None:
         """Update local fields."""
 
-        data = self._coordinator.data
+        data = self.coordinator.data
         if data is None:
             _LOGGER.debug("%s Coordinator data is None", self._symbol)
             return
@@ -292,7 +303,7 @@ class YahooFinanceSensor(Entity):
         # Don't show $ as the CurrencySymbol even if we can't get one.
         self._attributes[ATTR_CURRENCY_SYMBOL] = CURRENCY_CODES.get(lower_currency)
 
-    def _calc_trending_state(self):
+    def _calc_trending_state(self) -> Union[str, None]:
         """Return the trending state for the symbol."""
         if self._market_price is None or self._previous_close is None:
             return None
@@ -318,16 +329,4 @@ class YahooFinanceSensor(Entity):
             self._update_properties()
             self._last_available_timer = current_timer
 
-        return self._coordinator.last_update_success
-
-    async def async_added_to_hass(self) -> None:
-        """When entity is added to hass."""
-        self._coordinator.async_add_listener(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """When entity will be removed from hass."""
-        self._coordinator.async_remove_listener(self.async_write_ha_state)
-
-    async def async_update(self) -> None:
-        """Update symbol data."""
-        await self._coordinator.async_request_refresh()
+        return self.coordinator.last_update_success

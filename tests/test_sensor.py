@@ -7,6 +7,7 @@ import pytest
 
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,
+    SymbolDefinition,
     YahooSymbolUpdateCoordinator,
 )
 from custom_components.yahoofinance.const import (
@@ -19,7 +20,6 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
-    CONF_TARGET_CURRENCY,
     DATA_CURRENCY_SYMBOL,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
@@ -108,7 +108,7 @@ async def test_setup_platform(hass):
     mock_coordinator = Mock()
 
     config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
-    config[CONF_SYMBOLS] = [{"symbol": "BABA"}]
+    config[CONF_SYMBOLS] = [SymbolDefinition("BABA")]
 
     hass.data = {
         DOMAIN: {
@@ -135,7 +135,7 @@ def test_sensor_creation(
     )
 
     sensor = YahooFinanceSensor(
-        hass, mock_coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
+        hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
     # Accessing `available` triggers data population
@@ -150,8 +150,8 @@ def test_sensor_creation(
     assert attributes[ATTR_TRENDING] == "up"
 
     # All numeric values besides DATA_REGULAR_MARKET_PRICE should be 0
-    for numeric_data_key in NUMERIC_DATA_GROUPS:
-        for value in NUMERIC_DATA_GROUPS[numeric_data_key]:
+    for data_group in NUMERIC_DATA_GROUPS.values():
+        for value in data_group:
             key = value[0]
             if key != DATA_REGULAR_MARKET_PRICE:
                 assert attributes[key] == 0
@@ -183,7 +183,9 @@ def test_sensor_decimal_placs(
     config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
     config[CONF_DECIMAL_PLACES] = decimal_places
 
-    sensor = YahooFinanceSensor(hass, mock_coordinator, {"symbol": symbol}, config)
+    sensor = YahooFinanceSensor(
+        hass, mock_coordinator, SymbolDefinition(symbol), config
+    )
 
     # Accessing `available` triggers data population
     assert sensor.available is True
@@ -205,7 +207,10 @@ def test_sensor_data_when_coordinator_is_missing_symbol_data(
     # Create a sensor for some other symbol
     symbol_to_test = "ABC"
     sensor = YahooFinanceSensor(
-        hass, mock_coordinator, {"symbol": symbol_to_test}, DEFAULT_OPTIONAL_CONFIG
+        hass,
+        mock_coordinator,
+        SymbolDefinition(symbol_to_test),
+        DEFAULT_OPTIONAL_CONFIG,
     )
 
     # Accessing `available` triggers data population
@@ -228,7 +233,7 @@ def test_sensor_data_when_coordinator_returns_none(hass):
     )
 
     sensor = YahooFinanceSensor(
-        hass, mock_coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
+        hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
     # Accessing `available` triggers data population
@@ -246,7 +251,7 @@ async def test_sensor_update_calls_coordinator(hass):
     mock_coordinator = build_mock_coordinator(hass, True, symbol, None)
     mock_coordinator.async_request_refresh = AsyncMock(return_value=None)
     sensor = YahooFinanceSensor(
-        hass, mock_coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
+        hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
     await sensor.async_update()
@@ -276,7 +281,9 @@ def test_sensor_trend(
     config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
     config[CONF_SHOW_TRENDING_ICON] = show_trending
 
-    sensor = YahooFinanceSensor(hass, mock_coordinator, {"symbol": symbol}, config)
+    sensor = YahooFinanceSensor(
+        hass, mock_coordinator, SymbolDefinition(symbol), config
+    )
 
     # Accessing `available` triggers data population
     assert sensor.available is True
@@ -304,7 +311,9 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(hass)
     config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
     config[CONF_SHOW_TRENDING_ICON] = True
 
-    sensor = YahooFinanceSensor(hass, mock_coordinator, {"symbol": symbol}, config)
+    sensor = YahooFinanceSensor(
+        hass, mock_coordinator, SymbolDefinition(symbol), config
+    )
 
     # Accessing `available` triggers data population
     assert sensor.available is True
@@ -328,7 +337,7 @@ async def test_data_from_json(hass, mock_json):
     await hass.async_block_till_done()
 
     sensor = YahooFinanceSensor(
-        hass, coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
+        hass, coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
     # Accessing `available` triggers data population
@@ -364,7 +373,7 @@ def test_conversion(hass):
     sensor = YahooFinanceSensor(
         hass,
         mock_coordinator,
-        {"symbol": symbol, CONF_TARGET_CURRENCY: "CHF"},
+        SymbolDefinition(symbol, "CHF"),
         DEFAULT_OPTIONAL_CONFIG,
     )
 
@@ -385,7 +394,7 @@ def test_conversion_requests_additional_data_from_coordinator(hass):
     sensor = YahooFinanceSensor(
         hass,
         mock_coordinator,
-        {"symbol": symbol, CONF_TARGET_CURRENCY: "EUR"},
+        SymbolDefinition(symbol, "EUR"),
         DEFAULT_OPTIONAL_CONFIG,
     )
 
@@ -408,7 +417,7 @@ def test_conversion_not_attempted_if_target_currency_same(hass):
     sensor = YahooFinanceSensor(
         hass,
         mock_coordinator,
-        {"symbol": symbol, CONF_TARGET_CURRENCY: "USD"},
+        SymbolDefinition(symbol, "USD"),
         DEFAULT_OPTIONAL_CONFIG,
     )
 
@@ -433,36 +442,10 @@ def test_repeated_available(hass):
     type(mock_coordinator).data = mock_data
 
     sensor = YahooFinanceSensor(
-        hass, mock_coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
+        hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
     # Calling available in quick successions results in property updates once
     assert sensor.available
     assert sensor.available
     assert mock_data.call_count == 1
-
-
-async def test_setup_listener_registration(hass):
-    """Test entity listener registration."""
-    symbol = "XYZ"
-    mock_coordinator = build_mock_coordinator(hass, True, symbol, 12)
-
-    sensor = YahooFinanceSensor(
-        hass, mock_coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
-    )
-
-    await sensor.async_added_to_hass()
-    assert mock_coordinator.async_add_listener.call_count == 1
-
-
-async def test_setup_listener_unregistration(hass):
-    """Test entity listener unregistration."""
-    symbol = "XYZ"
-    mock_coordinator = build_mock_coordinator(hass, True, symbol, 12)
-
-    sensor = YahooFinanceSensor(
-        hass, mock_coordinator, {"symbol": symbol}, DEFAULT_OPTIONAL_CONFIG
-    )
-
-    await sensor.async_will_remove_from_hass()
-    assert mock_coordinator.async_remove_listener.call_count == 1
