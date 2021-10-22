@@ -102,7 +102,7 @@ class SymbolDefinition:
     target_currency: str
 
     def __init__(self, symbol: str, target_currency: Union[str, None] = None) -> None:
-        """Create a symbol definition."""
+        """Create a new symbol definition."""
         self.symbol = symbol
         self.target_currency = target_currency
 
@@ -112,11 +112,15 @@ class SymbolDefinition:
 
     def __eq__(self, other: any) -> bool:
         """Return the comparison."""
-        return (  # type: ignore
-            self.__class__ == other.__class__
+        return (
+            isinstance(other, SymbolDefinition)
             and self.symbol == other.symbol
             and self.target_currency == other.target_currency
         )
+
+    def __hash__(self) -> int:
+        """Make hashable."""
+        return hash((self.symbol, self.target_currency))
 
 
 def parse_scan_interval(scan_interval: Union[timedelta, str]) -> timedelta:

@@ -85,7 +85,7 @@ class YahooFinanceSensor(CoordinatorEntity):
         symbol_definition: SymbolDefinition,
         domain_config,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize the YahooFinance entity."""
         super().__init__(coordinator)
 
         symbol = symbol_definition.symbol

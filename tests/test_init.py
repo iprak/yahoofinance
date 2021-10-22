@@ -184,3 +184,12 @@ async def test_refresh_symbols_service(hass, enable_custom_integrations):
         await hass.async_block_till_done()
 
         assert mock_async_request_refresh.call_count == 1
+
+
+def test_SymbolDefinition_comparison():
+    """Test SymbolDefinition instance comparison."""
+    sym1 = SymbolDefinition("ABC")
+    sym2 = SymbolDefinition("ABC")
+    assert sym1 == sym2
+    assert hash(sym1) == hash(sym2)
+    assert str(sym1) == str(sym2)
