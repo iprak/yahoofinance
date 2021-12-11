@@ -163,7 +163,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         url = BASE + ",".join(self._symbols)
         _LOGGER.debug("Requesting data from '%s'", url)
 
-        async with async_timeout.timeout(WEBSESSION_TIMEOUT, loop=self.loop):
+        async with async_timeout.timeout(WEBSESSION_TIMEOUT):
             response = await self.websession.get(url)
             json = await response.json()
 
