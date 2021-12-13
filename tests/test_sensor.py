@@ -145,7 +145,7 @@ def test_sensor_creation(
     assert sensor.state == expected_market_price
     assert sensor.name == f"Symbol {symbol}"
 
-    attributes = sensor.device_state_attributes
+    attributes = sensor.extra_state_attributes
     # Sensor would be trending up because _previous_close is 0.
     assert attributes[ATTR_TRENDING] == "up"
 
@@ -289,7 +289,7 @@ def test_sensor_trend(
     assert sensor.available is True
 
     # ATTR_TRENDING should always reflect the trending status regarding of CONF_SHOW_TRENDING_ICON
-    assert sensor.device_state_attributes[ATTR_TRENDING] == expected_trend
+    assert sensor.extra_state_attributes[ATTR_TRENDING] == expected_trend
 
     if show_trending:
         assert sensor.icon == f"mdi:trending-{expected_trend}"
@@ -319,7 +319,7 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(hass)
     assert sensor.available is True
 
     # ATTR_TRENDING should always reflect the trending status regarding of CONF_SHOW_TRENDING_ICON
-    assert (ATTR_TRENDING in sensor.device_state_attributes) is False
+    assert (ATTR_TRENDING in sensor.extra_state_attributes) is False
 
     # icon is based on the currency
     currency = sensor.unit_of_measurement
@@ -343,7 +343,7 @@ async def test_data_from_json(hass, mock_json):
     # Accessing `available` triggers data population
     assert sensor.available is True
 
-    attributes = sensor.device_state_attributes
+    attributes = sensor.extra_state_attributes
 
     assert sensor.state == 232.73
     assert attributes["regularMarketChange"] == -5.66
