@@ -4,10 +4,9 @@ A component which presents Yahoo Finance stock quotes.
 https://github.com/iprak/yahoofinance
 """
 
-from collections.abc import Mapping
 import logging
 from timeit import default_timer as timer
-from typing import Any, Union
+from typing import Union
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -97,7 +96,8 @@ class YahooFinanceSensor(CoordinatorEntity):
 
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
 
-        self._attributes = {
+        # _attr_extra_state_attributes is returned by extra_state_attributes
+        self._attr_extra_state_attributes = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             ATTR_CURRENCY_SYMBOL: None,
             ATTR_SYMBOL: symbol,
@@ -118,7 +118,7 @@ class YahooFinanceSensor(CoordinatorEntity):
                     self._numeric_data_to_include.append(value)
 
                     key = value[0]
-                    self._attributes[key] = None
+                    self._attr_extra_state_attributes[key] = None
 
         # Delay initial data population to `available` which is called from `_async_write_ha_state`
         _LOGGER.debug(
@@ -142,11 +142,6 @@ class YahooFinanceSensor(CoordinatorEntity):
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement of this entity, if any."""
         return self._currency
-
-    @property
-    def device_state_attributes(self) -> Union[Mapping[str, Any], None]:
-        """Return the state attributes."""
-        return self._attributes
 
     @property
     def icon(self) -> str:
@@ -269,12 +264,18 @@ class YahooFinanceSensor(CoordinatorEntity):
             if value[1]:
                 attr_value = self.safe_convert(attr_value, conversion)
 
-            self._attributes[key] = self._round(attr_value)
+            self._attr_extra_state_attributes[key] = self._round(attr_value)
 
         # Add some other string attributes
-        self._attributes[ATTR_QUOTE_TYPE] = symbol_data[DATA_QUOTE_TYPE]
-        self._attributes[ATTR_QUOTE_SOURCE_NAME] = symbol_data[DATA_QUOTE_SOURCE_NAME]
-        self._attributes[ATTR_MARKET_STATE] = symbol_data[DATA_MARKET_STATE]
+        self._attr_extra_state_attributes[ATTR_QUOTE_TYPE] = symbol_data[
+            DATA_QUOTE_TYPE
+        ]
+        self._attr_extra_state_attributes[ATTR_QUOTE_SOURCE_NAME] = symbol_data[
+            DATA_QUOTE_SOURCE_NAME
+        ]
+        self._attr_extra_state_attributes[ATTR_MARKET_STATE] = symbol_data[
+            DATA_MARKET_STATE
+        ]
 
         # Use target_currency if we have conversion data. Otherwise keep using the
         # currency from data.
@@ -290,7 +291,7 @@ class YahooFinanceSensor(CoordinatorEntity):
 
         # Fall back to currency based icon if there is no trending state
         if trending_state is not None:
-            self._attributes[ATTR_TRENDING] = trending_state
+            self._attr_extra_state_attributes[ATTR_TRENDING] = trending_state
 
             if self._show_trending_icon:
                 self._icon = f"mdi:trending-{trending_state}"
@@ -301,7 +302,9 @@ class YahooFinanceSensor(CoordinatorEntity):
 
         # If this one of the known currencies, then include the correct currency symbol.
         # Don't show $ as the CurrencySymbol even if we can't get one.
-        self._attributes[ATTR_CURRENCY_SYMBOL] = CURRENCY_CODES.get(lower_currency)
+        self._attr_extra_state_attributes[ATTR_CURRENCY_SYMBOL] = CURRENCY_CODES.get(
+            lower_currency
+        )
 
     def _calc_trending_state(self) -> Union[str, None]:
         """Return the trending state for the symbol."""
