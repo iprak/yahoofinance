@@ -6,9 +6,9 @@ history:
 logbook:
 
 logger:
-  default: error
+  default: warn
   logs:
-    custom_components.yahoofinance: debug
+    custom_components.yahoofinance: warn
 
 yahoofinance:
   show_trending_icon: true
