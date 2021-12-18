@@ -4,6 +4,8 @@ A component which presents Yahoo Finance stock quotes.
 https://github.com/iprak/yahoofinance
 """
 
+from __future__ import annotations
+
 import logging
 from timeit import default_timer as timer
 from typing import Union
