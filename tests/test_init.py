@@ -168,12 +168,14 @@ async def test_setup_optionally_requests_coordinator_refresh(
 async def test_refresh_symbols_service(hass, enable_custom_integrations):
     """Test refresh_symbols service callback."""
 
+    # Mock the refresh callback `_async_update` for testing
     with patch(
-        f"{YSUC}.async_request_refresh", AsyncMock(return_value=None)
+        f"{YSUC}._async_update", AsyncMock(return_value=None)
     ) as mock_async_request_refresh:
 
         assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
         await hass.async_block_till_done()
+        assert mock_async_request_refresh.call_count == 1
 
         await hass.services.async_call(
             DOMAIN,
@@ -183,7 +185,7 @@ async def test_refresh_symbols_service(hass, enable_custom_integrations):
         )
         await hass.async_block_till_done()
 
-        assert mock_async_request_refresh.call_count == 1
+        assert mock_async_request_refresh.call_count == 2
 
 
 def test_SymbolDefinition_comparison():
