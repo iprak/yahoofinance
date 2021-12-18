@@ -3,6 +3,7 @@ The Yahoo finance component.
 
 https://github.com/iprak/yahoofinance
 """
+from __future__ import annotations
 
 from datetime import timedelta
 import logging

@@ -1,5 +1,7 @@
 """Constants for Yahoo Finance sensor."""
 
+from __future__ import annotations
+
 from typing import Final
 
 # Additional attributes exposed by the sensor
