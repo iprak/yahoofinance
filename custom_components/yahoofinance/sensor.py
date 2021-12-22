@@ -6,6 +6,7 @@ https://github.com/iprak/yahoofinance
 
 from __future__ import annotations
 
+import datetime
 import logging
 from timeit import default_timer as timer
 from typing import Union
@@ -16,11 +17,12 @@ from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.yahoofinance import SymbolDefinition
+from custom_components.yahoofinance import SymbolDefinition, convert_to_float
 from custom_components.yahoofinance.coordinator import YahooSymbolUpdateCoordinator
 
 from .const import (
     ATTR_CURRENCY_SYMBOL,
+    ATTR_DIVIDEND_DATE,
     ATTR_MARKET_STATE,
     ATTR_QUOTE_SOURCE_NAME,
     ATTR_QUOTE_TYPE,
@@ -32,6 +34,7 @@ from .const import (
     CONF_SYMBOLS,
     CURRENCY_CODES,
     DATA_CURRENCY_SYMBOL,
+    DATA_DIVIDEND_DATE,
     DATA_FINANCIAL_CURRENCY,
     DATA_MARKET_STATE,
     DATA_QUOTE_SOURCE_NAME,
@@ -202,6 +205,21 @@ class YahooFinanceSensor(CoordinatorEntity):
             return value
         return value * conversion
 
+    @staticmethod
+    def parse_dividend_date(dividend_date_timestamp) -> str | None:
+        """Parse dividendDate JSON element."""
+
+        print("dividend_date_timestamp", dividend_date_timestamp)
+        dividend_date_timestamp = convert_to_float(dividend_date_timestamp)
+        print("dividend_date_timestamp", dividend_date_timestamp)
+        if dividend_date_timestamp is None:
+            return None
+
+        dividend_date = datetime.datetime.utcfromtimestamp(dividend_date_timestamp)
+        print(dividend_date)
+        dividend_date_date = dividend_date.date()
+        return dividend_date_date.isoformat()
+
     def _update_original_currency(self, symbol_data) -> bool:
         """Update the original currency."""
 
@@ -231,7 +249,7 @@ class YahooFinanceSensor(CoordinatorEntity):
             _LOGGER.debug("%s Coordinator data is None", self._symbol)
             return
 
-        symbol_data = data.get(self._symbol)
+        symbol_data: dict = data.get(self._symbol)
         if symbol_data is None:
             _LOGGER.debug("%s Symbol data is None", self._symbol)
             return
@@ -278,6 +296,10 @@ class YahooFinanceSensor(CoordinatorEntity):
         self._attr_extra_state_attributes[ATTR_MARKET_STATE] = symbol_data[
             DATA_MARKET_STATE
         ]
+
+        self._attr_extra_state_attributes[
+            ATTR_DIVIDEND_DATE
+        ] = self.parse_dividend_date(symbol_data.get(DATA_DIVIDEND_DATE))
 
         # Use target_currency if we have conversion data. Otherwise keep using the
         # currency from data.

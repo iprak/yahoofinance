@@ -6,9 +6,9 @@ history:
 logbook:
 
 logger:
-  default: warn
+  default: info
   logs:
-    custom_components.yahoofinance: warn
+    custom_components.yahoofinance: info
 
 yahoofinance:
   show_trending_icon: true
@@ -27,3 +27,4 @@ yahoofinance:
     - ^SSMI
     - symbol: EMIM.L
       target_currency: EUR
+    - symbol: AAPL

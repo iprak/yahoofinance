@@ -21,6 +21,7 @@ from custom_components.yahoofinance.const import (
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
+    DATA_DIVIDEND_DATE,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
@@ -153,7 +154,7 @@ def test_sensor_creation(
     for data_group in NUMERIC_DATA_GROUPS.values():
         for value in data_group:
             key = value[0]
-            if key != DATA_REGULAR_MARKET_PRICE:
+            if (key != DATA_REGULAR_MARKET_PRICE) and (key != DATA_DIVIDEND_DATE):
                 assert attributes[key] == 0
 
     # Since we did not provide any data so currency should be the default value
@@ -449,3 +450,18 @@ def test_repeated_available(hass):
     assert sensor.available
     assert sensor.available
     assert mock_data.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "dividend_date,expected_date",
+    [
+        (None, None),
+        (1642118400, "2022-01-14"),
+        (1646870400, "2022-03-10"),
+        ("1646870400", "2022-03-10"),
+        ("164687040 0", None),
+    ],
+)
+def test_parse_dividend_date(dividend_date, expected_date):
+    """Test dividend date parsing."""
+    assert YahooFinanceSensor.parse_dividend_date(dividend_date) == expected_date

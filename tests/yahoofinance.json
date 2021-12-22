@@ -72,7 +72,8 @@
                 "tradeable": false,
                 "marketState": "CLOSED",
                 "displayName": "Alibaba",
-                "symbol": "BABA"
+                "symbol": "BABA",
+                "dividendDate": 1646870400
             }
         ],
         "error": null
