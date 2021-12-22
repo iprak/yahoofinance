@@ -38,6 +38,7 @@ regularMarketPreviousClose: 12.63
 regularMarketPrice: 12.89
 regularMarketVolume: 0
 regularMarketTime: 1618617625
+dividendDate: 2021-11-11
 fiftyDayAverage: 107.54
 fiftyDayAverageChange: 5.35
 fiftyDayAverageChangePercent: 0.05
@@ -57,6 +58,9 @@ unit_of_measurement: USD
 friendly_name: Ivy Science & Technology Fund C
 icon: mdi:trending-up
 ```
+
+The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
+
 
 ## Optional Configuration
 
