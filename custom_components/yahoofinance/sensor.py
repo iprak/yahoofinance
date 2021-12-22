@@ -209,14 +209,11 @@ class YahooFinanceSensor(CoordinatorEntity):
     def parse_dividend_date(dividend_date_timestamp) -> str | None:
         """Parse dividendDate JSON element."""
 
-        print("dividend_date_timestamp", dividend_date_timestamp)
         dividend_date_timestamp = convert_to_float(dividend_date_timestamp)
-        print("dividend_date_timestamp", dividend_date_timestamp)
         if dividend_date_timestamp is None:
             return None
 
         dividend_date = datetime.datetime.utcfromtimestamp(dividend_date_timestamp)
-        print(dividend_date)
         dividend_date_date = dividend_date.date()
         return dividend_date_date.isoformat()
 
