@@ -34,7 +34,6 @@ YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 async def test_incomplete_json(hass, parsed_json, message):
     """Existing data is not updated if JSON is invalid."""
 
-    print(message)
     mock_coordinator = YahooSymbolUpdateCoordinator(None, hass, DEFAULT_SCAN_INTERVAL)
     mock_coordinator.get_json = AsyncMock(return_value=parsed_json)
 

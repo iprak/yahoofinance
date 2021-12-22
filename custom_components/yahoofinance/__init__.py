@@ -209,3 +209,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     )
 
     return True
+
+
+def convert_to_float(value) -> float | None:
+    """Convert specified value to float."""
+    try:
+        return float(value)
+    except:  # noqa: E722 pylint: disable=bare-except
+        return None

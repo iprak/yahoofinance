@@ -195,3 +195,16 @@ def test_SymbolDefinition_comparison():
     assert sym1 == sym2
     assert hash(sym1) == hash(sym2)
     assert str(sym1) == str(sym2)
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (None, None),
+        (1642118400, 1642118400),
+        ("1646870400", 1646870400),
+        ("164687040 0", None),
+    ],
+)
+def test_convert_to_float(value, expected):
+    """Tests float conversion."""
