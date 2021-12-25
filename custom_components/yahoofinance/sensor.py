@@ -16,6 +16,7 @@ from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
 from custom_components.yahoofinance import SymbolDefinition, convert_to_float
 from custom_components.yahoofinance.coordinator import YahooSymbolUpdateCoordinator
@@ -99,6 +100,7 @@ class YahooFinanceSensor(CoordinatorEntity):
         self._previous_close = None
         self._target_currency = symbol_definition.target_currency
 
+        self._unique_id = symbol
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
 
         # _attr_extra_state_attributes is returned by extra_state_attributes
@@ -127,8 +129,14 @@ class YahooFinanceSensor(CoordinatorEntity):
 
         # Delay initial data population to `available` which is called from `_async_write_ha_state`
         _LOGGER.debug(
-            "Created %s target_currency=%s", self.entity_id, self._target_currency
+            "Created entity for target_currency=%s",
+            self._target_currency,
         )
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._unique_id
 
     @property
     def name(self) -> str:
