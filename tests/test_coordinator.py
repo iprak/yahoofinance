@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import timedelta
+from http import HTTPStatus
 import random
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -92,6 +93,7 @@ async def test_successful_data_parsing(hass, mock_json):
     )
 
     mock_response = Mock()
+    mock_response.status = HTTPStatus.OK
     mock_response.json = AsyncMock(return_value=mock_json)
 
     mock_coordinator.websession.get = AsyncMock(return_value=mock_response)
@@ -241,6 +243,7 @@ async def test_logging_when_process_json_result_reports_error(hass, mock_json):
     )
 
     mock_response = Mock()
+    mock_response.status = HTTPStatus.NO_CONTENT
     mock_response.json = AsyncMock(return_value=mock_json)
 
     mock_coordinator.websession.get = AsyncMock(return_value=mock_response)
@@ -250,5 +253,4 @@ async def test_logging_when_process_json_result_reports_error(hass, mock_json):
         await mock_coordinator.async_refresh()
         await hass.async_block_till_done()
 
-        # There is one info() call from _async_update and one more conditionally
-        assert mock_logger.info.call_count == 2
+        assert mock_logger.error.call_count == 1
