@@ -109,7 +109,7 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
   symbols:
     - GBPUSD=X
   ```
-- The trending icons themselves cannot be colored but colors can be added using [browser_mod](https://github.com/thomasloven/hass-browser_mod/). Here [auto-entities](https://github.com/thomasloven/lovelace-auto-entities) is being used to simplify the code.
+- The trending icons themselves cannot be colored but colors can be added using [lovelace-card-mod](https://github.com/thomasloven/lovelace-card-mod). Here [auto-entities](https://github.com/thomasloven/lovelace-auto-entities) is being used to simplify the code.
 
   ```yaml
   - type: custom:auto-entities
