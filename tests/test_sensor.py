@@ -348,7 +348,7 @@ async def test_data_from_json(hass, mock_json):
 
     assert sensor.state == 232.73
     assert attributes["regularMarketChange"] == -5.66
-    assert attributes["twoHundredDayAverageChangePercent"] == -0.13
+    assert attributes["twoHundredDayAverageChangePercent"] == -12.61  # from -0.12609957
 
 
 @pytest.mark.parametrize(
