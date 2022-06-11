@@ -1,8 +1,4 @@
 {
     "name": "Yahoo Finance",
-    "domains": [
-        "sensor"
-    ],
-    "iot_class": "cloud_poll",
     "render_readme": true
 }
