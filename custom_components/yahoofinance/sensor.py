@@ -9,7 +9,6 @@ from __future__ import annotations
 import datetime
 import logging
 from timeit import default_timer as timer
-from typing import Union
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.const import ATTR_ATTRIBUTION
@@ -161,7 +160,7 @@ class YahooFinanceSensor(CoordinatorEntity):
         """Return the icon to use in the frontend, if any."""
         return self._icon
 
-    def _round(self, value: Union[float, None]) -> Union[float, int, None]:
+    def _round(self, value: float | None) -> float | int | None:
         """Return formatted value based on decimal_places."""
         if value is None:
             return None
@@ -173,7 +172,7 @@ class YahooFinanceSensor(CoordinatorEntity):
 
         return round(value, self._decimal_places)
 
-    def _get_target_currency_conversion(self) -> Union[float, None]:
+    def _get_target_currency_conversion(self) -> float | None:
         value = None
 
         if self._target_currency and self._original_currency:
@@ -203,9 +202,7 @@ class YahooFinanceSensor(CoordinatorEntity):
         return value
 
     @staticmethod
-    def safe_convert(
-        value: Union[float, None], conversion: Union[float, None]
-    ) -> Union[float, None]:
+    def safe_convert(value: float | None, conversion: float | None) -> float | None:
         """Return the converted value. The original value is returned if there is no conversion."""
         if value is None:
             return None
@@ -338,7 +335,7 @@ class YahooFinanceSensor(CoordinatorEntity):
             lower_currency
         )
 
-    def _calc_trending_state(self) -> Union[str, None]:
+    def _calc_trending_state(self) -> str | None:
         """Return the trending state for the symbol."""
         if self._market_price is None or self._previous_close is None:
             return None
