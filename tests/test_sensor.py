@@ -401,7 +401,8 @@ def test_conversion_requests_additional_data_from_coordinator(hass):
 
     with patch.object(mock_coordinator, "add_symbol") as mock_add_symbol:
         # Accessing `available` triggers data population
-        assert sensor.available is True
+        # available remains False till the conversion symbol gets loaded
+        assert sensor.available is False
 
         assert mock_add_symbol.call_count == 1
 
