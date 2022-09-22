@@ -1,34 +1,39 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.7.2
+    rev: v2.38.0
     hooks:
       - id: pyupgrade
-        args: [--py38-plus]
+        args: [--py39-plus]
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 22.8.0
     hooks:
       - id: black
         args:
           - --safe
           - --quiet
-        files: ^((homeassistant|script|tests)/.+)?[^/]+\.py$
+        files: ^((homeassistant|pylint|script|tests)/.+)?[^/]+\.py$
   - repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=hass,alot,datas,dof,dur,ether,farenheit,hist,iff,ines,ist,lightsensor,mut,nd,pres,referer,ser,serie,te,technik,ue,uint,visability,wan,wanna,withing,iam,incomfort
+          - --ignore-words-list=hass,alot,datas,dof,dur,ether,farenheit,hist,iff,iif,ines,ist,lightsensor,mut,nd,pres,referer,rime,ser,serie,te,technik,ue,uint,visability,wan,wanna,withing,iam,incomfort,ba,haa,pullrequests
           - --skip="./.*,*.csv,*.json"
           - --quiet-level=2
         exclude_types: [csv, json]
-        exclude: ^tests/fixtures/
-  - repo: https://gitlab.com/pycqa/flake8
+        exclude: ^tests/fixtures/|homeassistant/generated/
+  - repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:
       - id: flake8
         additional_dependencies:
-          - flake8-docstrings==1.5.0
-          - pydocstyle==5.1.1
+          - pycodestyle==2.8.0
+          - pyflakes==2.4.0
+          - flake8-docstrings==1.6.0
+          - pydocstyle==6.1.1
+          - flake8-comprehensions==3.10.0
+          - flake8-noqa==1.2.8
+          - mccabe==0.6.1
         files: ^(homeassistant|script|tests)/.+\.py$
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.4
@@ -50,11 +55,3 @@ repos:
         stages: [manual]
       - id: check-json
         exclude: (.vscode|.devcontainer)
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.790
-    hooks:
-      - id: mypy
-        args:
-          - --pretty
-          - --show-error-codes
-          - --show-error-context
