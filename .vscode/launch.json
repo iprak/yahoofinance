@@ -8,13 +8,13 @@
 			"module": "homeassistant",
 			"justMyCode": false,
 			"args": [
-				"--debug",
 				"-c",
 				"/config"
 			],
 			"serverReadyAction": {
 				"action": "openExternally"
-			}
+			},
+			"console": "integratedTerminal"
 		}
 	]
 }
