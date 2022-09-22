@@ -15,7 +15,7 @@ ATTR_DIVIDEND_DATE: Final = "dividendDate"
 
 # Hass data
 HASS_DATA_CONFIG: Final = "config"
-HASS_DATA_COORDINATOR: Final = "coordinator"
+HASS_DATA_COORDINATORS: Final = "coordinators"
 
 # JSON data pieces
 DATA_CURRENCY_SYMBOL: Final = "currency"
@@ -46,9 +46,10 @@ DEFAULT_CONF_SHOW_TRENDING_ICON: Final = False
 
 DEFAULT_NUMERIC_DATA_GROUP: Final = "default"
 
-# Data keys grouped into categories. The values for the categories (except for DEFAULT_NUMERIC_DATA_GROUP)
-# can be conditionally pulled into attributes. The first value of the set is the key and the second
-# boolean value indicates if the attribute is a currency.
+# Data keys grouped into categories. The values for the categories except for
+# DEFAULT_NUMERIC_DATA_GROUP can be conditionally pulled into attributes. The
+# first value of the set is the key and the second boolean value indicates if
+# the attribute is a currency.
 NUMERIC_DATA_GROUPS: Final = {
     DEFAULT_NUMERIC_DATA_GROUP: [
         ("averageDailyVolume10Day", False),

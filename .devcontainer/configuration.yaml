@@ -24,6 +24,7 @@ yahoofinance:
     - symbol: IDFCBANK.BO
     - symbol: baba
       target_currency: inr
+      scan_interval: 30
     - ^SSMI
     - symbol: EMIM.L
       target_currency: EUR
