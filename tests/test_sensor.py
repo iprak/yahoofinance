@@ -1,6 +1,6 @@
 """Tests for Yahoo Finance component."""
 import copy
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 import pytest
@@ -35,7 +35,7 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CURRENCY_SYMBOL,
     DOMAIN,
     HASS_DATA_CONFIG,
-    HASS_DATA_COORDINATOR,
+    HASS_DATA_COORDINATORS,
     NUMERIC_DATA_GROUPS,
 )
 from custom_components.yahoofinance.sensor import (
@@ -102,18 +102,26 @@ def build_mock_coordinator_for_conversion(
     return coordinator
 
 
+def install_coordinator(hass, coordinator) -> None:
+    """Install the coordinator into HASS_DATA_COORDINATORS store."""
+    hass.data[DOMAIN] = {HASS_DATA_COORDINATORS: {DEFAULT_SCAN_INTERVAL: coordinator}}
+
+
 async def test_setup_platform(hass):
     """Test platform setup."""
 
     async_add_entities = MagicMock()
-    mock_coordinator = Mock()
+    mock_coordinator = build_mock_coordinator(hass, True, "BABA", 12)
+    mock_coordinators = {DEFAULT_SCAN_INTERVAL: mock_coordinator}
 
     config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
-    config[CONF_SYMBOLS] = [SymbolDefinition("BABA")]
+    config[CONF_SYMBOLS] = [
+        SymbolDefinition("BABA", scan_interval=DEFAULT_SCAN_INTERVAL)
+    ]
 
     hass.data = {
         DOMAIN: {
-            HASS_DATA_COORDINATOR: mock_coordinator,
+            HASS_DATA_COORDINATORS: mock_coordinators,
             HASS_DATA_CONFIG: config,
         }
     }
@@ -139,7 +147,9 @@ def test_sensor_creation(
         hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
-    # Accessing `available` triggers data population
+    # Force sensor update from coordinator
+    sensor.update_properties()
+
     assert sensor.available is last_update_success
 
     # state represents the rounded market price
@@ -188,7 +198,8 @@ def test_sensor_decimal_placs(
         hass, mock_coordinator, SymbolDefinition(symbol), config
     )
 
-    # Accessing `available` triggers data population
+    sensor.update_properties()
+
     assert sensor.available is True
 
     # state represents the rounded market price
@@ -214,11 +225,11 @@ def test_sensor_data_when_coordinator_is_missing_symbol_data(
         DEFAULT_OPTIONAL_CONFIG,
     )
 
-    # Accessing `available` triggers data population
-    assert sensor.available is last_update_success
+    sensor.update_properties()
 
+    # Coordinator does not have data for this symbol
+    assert sensor.available is False
     assert sensor.state is None
-
     # Symbol is used as name when there is no data
     assert sensor.name == symbol_to_test
 
@@ -237,7 +248,8 @@ def test_sensor_data_when_coordinator_returns_none(hass):
         hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
-    # Accessing `available` triggers data population
+    sensor.update_properties()
+
     assert sensor.available is False
 
     assert sensor.state is None
@@ -286,7 +298,8 @@ def test_sensor_trend(
         hass, mock_coordinator, SymbolDefinition(symbol), config
     )
 
-    # Accessing `available` triggers data population
+    sensor.update_properties()
+
     assert sensor.available is True
 
     # ATTR_TRENDING should always reflect the trending status regarding of CONF_SHOW_TRENDING_ICON
@@ -316,7 +329,8 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(hass)
         hass, mock_coordinator, SymbolDefinition(symbol), config
     )
 
-    # Accessing `available` triggers data population
+    sensor.update_properties()
+
     assert sensor.available is True
 
     # ATTR_TRENDING should always reflect the trending status regarding of CONF_SHOW_TRENDING_ICON
@@ -341,7 +355,8 @@ async def test_data_from_json(hass, mock_json):
         hass, coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
     )
 
-    # Accessing `available` triggers data population
+    sensor.update_properties()
+
     assert sensor.available is True
 
     attributes = sensor.extra_state_attributes
@@ -370,15 +385,17 @@ def test_conversion(hass):
 
     # Force update _previous_close to None
     mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+    install_coordinator(hass, mock_coordinator)
 
     sensor = YahooFinanceSensor(
         hass,
         mock_coordinator,
-        SymbolDefinition(symbol, "CHF"),
+        SymbolDefinition(symbol, target_currency="CHF"),
         DEFAULT_OPTIONAL_CONFIG,
     )
 
-    # Accessing `available` triggers data population
+    sensor.update_properties()
+
     assert sensor.available is True
     assert sensor.state == (12 * 1.5)
 
@@ -391,16 +408,18 @@ def test_conversion_requests_additional_data_from_coordinator(hass):
 
     # Force update _previous_close to None
     mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+    install_coordinator(hass, mock_coordinator)
 
     sensor = YahooFinanceSensor(
         hass,
         mock_coordinator,
-        SymbolDefinition(symbol, "EUR"),
+        SymbolDefinition(symbol, target_currency="EUR"),
         DEFAULT_OPTIONAL_CONFIG,
     )
 
     with patch.object(mock_coordinator, "add_symbol") as mock_add_symbol:
-        # Accessing `available` triggers data population
+        sensor.update_properties()
+
         # available remains False till the conversion symbol gets loaded
         assert sensor.available is False
 
@@ -419,38 +438,17 @@ def test_conversion_not_attempted_if_target_currency_same(hass):
     sensor = YahooFinanceSensor(
         hass,
         mock_coordinator,
-        SymbolDefinition(symbol, "USD"),
+        SymbolDefinition(symbol, target_currency="USD"),
         DEFAULT_OPTIONAL_CONFIG,
     )
 
     with patch.object(mock_coordinator, "add_symbol") as mock_add_symbol:
-        # Accessing `available` triggers data population
+        sensor.update_properties()
+
         assert sensor.available is True
 
         # The mock data has currency USD and target is USD too.
         assert mock_add_symbol.call_count == 0
-
-
-def test_repeated_available(hass):
-    """Test repeated calls to available."""
-
-    symbol = "XYZ"
-    market_price = 12
-    symbol_data = build_mock_symbol_data(symbol, market_price)
-    # symbol_data[DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = market_price
-
-    mock_coordinator = Mock()
-    mock_data = PropertyMock(return_value=symbol_data)
-    type(mock_coordinator).data = mock_data
-
-    sensor = YahooFinanceSensor(
-        hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
-    )
-
-    # Calling available in quick successions results in property updates once
-    assert sensor.available
-    assert sensor.available
-    assert mock_data.call_count == 1
 
 
 @pytest.mark.parametrize(
