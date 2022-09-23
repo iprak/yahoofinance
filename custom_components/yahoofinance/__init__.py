@@ -170,7 +170,9 @@ def normalize_input_symbols(
                     SymbolDefinition(
                         symbol,
                         target_currency=value.get(CONF_TARGET_CURRENCY),
-                        scan_interval=value.get(CONF_SCAN_INTERVAL),
+                        scan_interval=parse_scan_interval(
+                            value.get(CONF_SCAN_INTERVAL)
+                        ),
                     )
                 )
 
