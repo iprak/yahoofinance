@@ -28,4 +28,7 @@ yahoofinance:
     - ^SSMI
     - symbol: EMIM.L
       target_currency: EUR
+      scan_interval: 30
     - symbol: AAPL
+    - symbol: USDINR=X
+      scan_interval: 45
