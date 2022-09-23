@@ -158,7 +158,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
             self._target_currency,
         )
 
-        self._update_properties()
+        self.update_properties()
 
     @staticmethod
     def safe_convert(value: float | None, conversion: float | None) -> float | None:
@@ -225,7 +225,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._update_properties()
+        self.update_properties()
         super()._handle_coordinator_update()
 
     def _round(self, value: float | None) -> float | int | None:
@@ -309,7 +309,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         self._original_currency = currency or financial_currency or DEFAULT_CURRENCY
 
-    def _update_properties(self) -> None:
+    def update_properties(self) -> None:
         """Update local fields."""
 
         data = self.coordinator.data

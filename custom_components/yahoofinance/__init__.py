@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
-from typing import Final
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -34,15 +33,15 @@ from .const import (
     DEFAULT_CONF_INCLUDE_PRE_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATORS,
+    MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
 
 _LOGGER = logging.getLogger(__name__)
-DEFAULT_SCAN_INTERVAL: Final = timedelta(hours=6)
-MINIMUM_SCAN_INTERVAL: Final = timedelta(seconds=30)
 
 
 BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
@@ -107,8 +106,13 @@ class SymbolDefinition:
     target_currency: str | None = None
     scan_interval: timedelta | None = None
 
-    def __init__(self, symbol: str, **kwargs) -> None:
-        """Create a new symbol definition."""
+    def __init__(self, symbol: str, **kwargs: any) -> None:
+        """Create a new symbol definition.
+
+        ### Parameters
+            symbol(str): The symbol
+            **scan_interval (time_delta): The symbol scan interval
+        """
         self.symbol = symbol
 
         if "target_currency" in kwargs:

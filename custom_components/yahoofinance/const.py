@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Final
 
 # Additional attributes exposed by the sensor
@@ -116,6 +117,9 @@ DEFAULT_CURRENCY_SYMBOL: Final = "$"
 DEFAULT_ICON: Final = "mdi:currency-usd"
 DOMAIN: Final = "yahoofinance"
 SERVICE_REFRESH: Final = "refresh_symbols"
+
+DEFAULT_SCAN_INTERVAL: Final = timedelta(hours=6)
+MINIMUM_SCAN_INTERVAL: Final = timedelta(seconds=30)
 
 CURRENCY_CODES: Final = {
     "bdt": "৳",
