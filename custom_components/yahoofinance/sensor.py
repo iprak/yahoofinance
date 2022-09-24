@@ -219,7 +219,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
             and super().available
             and not self._waiting_on_conversion
         )
-        _LOGGER.info("%s available=%s", self._symbol, value)
+        _LOGGER.debug("%s available=%s", self._symbol, value)
         return value
 
     @callback
@@ -310,7 +310,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._original_currency = currency or financial_currency or DEFAULT_CURRENCY
 
     def update_properties(self) -> None:
-        """Update local fields."""
+        """Update local fields. This is also used in unit testing."""
 
         data = self.coordinator.data
         if data is None:
