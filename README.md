@@ -61,14 +61,17 @@ icon: mdi:trending-up
 
 The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
 
-
 ## Optional Configuration
 
+### Integration
+
 - Data fetch interval can be adjusted by specifying the `scan_interval` setting whose default value is 6 hours and the minimum value is 30 seconds.
+
   ```yaml
   scan_interval:
     hours: 4
   ```
+
   You can disable automatic update by passing `None` for `scan_interval`.
 
 - Trending icons (trending-up, trending-down or trending-neutral) can be displayed instead of currency based icon by specifying `show_trending_icon`.
@@ -76,18 +79,10 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
   show_trending_icon: true
   ```
 - All numeric values are by default rounded to 2 places of decimal. This can be adjusted by the `decimal_places` setting. A value of 0 will return in integer values and -1 will suppress rounding.
+
   ```yaml
   decimal_places: 3
   ```
-- An alternate target currency can be specified for a symbol using the extended declaration format. Here, the symbol EMIM.L is reported in USD but will be presented in EUR. The conversion would be based on the value of the symbol USDEUR=X.
-
-  ```yaml
-  symbols:
-    - symbol: EMIM.L
-      target_currency: EUR
-    ```
-
-  If data for the target currency is not found, then the display will remain in original currency. The conversion is only applied on the attributes representing prices.
 
 - The fifty_day, post, pre and two_hundred attributes can be suppressed as following. They are included by default.
   ```yaml
@@ -97,13 +92,36 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
   include_two_hundred_day_values: false
   ```
 
+### Symbol
+
+- An alternate target currency can be specified for a symbol using the extended declaration format. Here, the symbol EMIM.L is reported in USD but will be presented in EUR. The conversion would be based on the value of the symbol USDEUR=X.
+
+  ```yaml
+  symbols:
+    - symbol: EMIM.L
+      target_currency: EUR
+  ```
+
+  If data for the target currency is not found, then the display will remain in original currency. The conversion is only applied on the attributes representing prices.
+
+- The data fetch interval can be fine tuned at symbol level. By default, the `scan_interval` from the integration is used. The minimum value is still 30 seconds. Symbols with the same `scan_interval` are grouped together and loaded through one data coordinator.
+
+  If conversion data needs to be loaded, then that too will get added to the same coordinator. However, if conversion symbol is found in another coordinator, then that will get used.
+
+  ```yaml
+  scan_interval:
+    hours: 4
+  ```
+
 ## Examples
+
 - The symbol can also represent a financial index such as [this](https://finance.yahoo.com/world-indices/).
 
   ```yaml
   symbols:
     - ^SSMI
   ```
+
 - Yahoo also provides currency conversion as a symbol.
   ```yaml
   symbols:
@@ -133,7 +151,6 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
 # Services
 
 The component exposes the service `yahoofinance.refresh_symbols` which can be used to refresh all the data.
-
 
 # Breaking Changes
 
