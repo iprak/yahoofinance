@@ -3,6 +3,8 @@
 	"context": "..",
 	"dockerFile": "../Dockerfile",
 	"appPort": "9123:8123",
+	"containerUser": "root",
+	"remoteUser": "root",
 	"postCreateCommand": "scripts/setup.sh",
 	"containerEnv": {
 		"TZ": "America/Chicago"

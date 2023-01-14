@@ -9,4 +9,5 @@
     "python.testing.pytestArgs": [
         "tests"
     ],
+    "files.eol": "\r\n"
 }
