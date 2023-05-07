@@ -10,6 +10,8 @@ from datetime import timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 import logging
+import re
+import urllib.parse
 from typing import Final
 
 import aiohttp
@@ -23,6 +25,7 @@ from homeassistant.util.dt import utcnow
 
 from custom_components.yahoofinance.const import (
     CRUMB_URL,
+    CONSENT_HOST,
     HEADER_ACCEPT,
     HEADER_ACCEPT_ENCODING,
     USER_AGENT,
@@ -74,16 +77,38 @@ class CrumbCoordinator:
 
                 _LOGGER.debug("Getting crumb from from %s", CRUMB_URL)
                 response = await websession.get(CRUMB_URL, headers=headers)
-                self.cookies = response.cookies
+                _LOGGER.debug("Response status: %d", response.status)
+                _LOGGER.debug("Response URL: %s", response.url)
 
                 if response.status == HTTPStatus.OK:
                     content = await response.text()
+
+                    if response.url.host == CONSENT_HOST:
+                        _LOGGER.debug("Cookies consent page detected")
+                        pattern = r'<input.*?type="hidden".*?name="(.*?)".*?value="(.*?)".*?>'
+                        matches = re.findall(pattern, content)
+                        form_data = { "reject" : "reject" }
+                        for name, value in matches:
+                            _LOGGER.debug("Form field: name=%s value=%s", name, value)
+                            form_data[name] = value
+                        response = await websession.post(response.url, data=form_data)
+                        _LOGGER.debug("Response status: %d", response.status)
+                        _LOGGER.debug("Response URL: %s", response.url)
+                        if response.status != HTTPStatus.OK:
+                            return
+                        content = await response.text()
+
+                    self.cookies = response.cookies
+                    _LOGGER.debug("Cookies: %s", str(self.cookies))
+
                     start_pos = content.find('"crumb":"')
+                    _LOGGER.debug("Start position: %d", start_pos)
                     if start_pos != -1:
                         start_pos = start_pos + 9
                         end_pos = content.find('"', start_pos + 10)
+                        _LOGGER.debug("End position: %d", end_pos)
                         if end_pos != -1:
-                            self.crumb = content[start_pos:end_pos]
+                            self.crumb = content[start_pos:end_pos].encode().decode("unicode_escape")
                             _LOGGER.debug("Crumb=%s", self.crumb)
 
         except (asyncio.TimeoutError, aiohttp.ClientError):
@@ -239,7 +264,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         if crumb is None:
             crumb = await self._cc.try_get_crumb()
         if crumb is not None:
-            url = url + "&crumb=" + crumb
+            url = url + "&crumb=" + urllib.parse.quote(crumb)
             cookies = self._cc.cookies
 
         _LOGGER.debug("Requesting data from '%s'", url)
