@@ -109,7 +109,7 @@ STRING_DATA_KEYS: Final = [
 
 
 ATTRIBUTION: Final = "Data provided by Yahoo Finance"
-BASE: Final = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="
+BASE: Final = "https://query1.finance.yahoo.com/v6/finance/quote?symbols="
 
 CRUMB_URL: Final = "https://finance.yahoo.com/quote/NQ%3DF"
 USER_AGENT: Final = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
