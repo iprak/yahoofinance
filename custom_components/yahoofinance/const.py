@@ -35,6 +35,7 @@ CONF_INCLUDE_FIFTY_DAY_VALUES: Final = "include_fifty_day_values"
 CONF_INCLUDE_POST_VALUES: Final = "include_post_values"
 CONF_INCLUDE_PRE_VALUES: Final = "include_pre_values"
 CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = "include_two_hundred_day_values"
+CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = "include_fifty_two_week_values"
 CONF_SHOW_TRENDING_ICON: Final = "show_trending_icon"
 CONF_TARGET_CURRENCY: Final = "target_currency"
 
@@ -43,6 +44,7 @@ DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES: Final = True
 DEFAULT_CONF_INCLUDE_POST_VALUES: Final = True
 DEFAULT_CONF_INCLUDE_PRE_VALUES: Final = True
 DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = True
+DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = True
 DEFAULT_CONF_SHOW_TRENDING_ICON: Final = False
 
 DEFAULT_NUMERIC_DATA_GROUP: Final = "default"
@@ -87,11 +89,21 @@ NUMERIC_DATA_GROUPS: Final = {
         ("twoHundredDayAverageChange", True),
         ("twoHundredDayAverageChangePercent", False),
     ],
+    CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: [
+        ("fiftyTwoWeekLow", True),
+        ("fiftyTwoWeekLowChange", True),
+        ("fiftyTwoWeekLowChangePercent", False),
+        ("fiftyTwoWeekHigh", True),
+        ("fiftyTwoWeekHighChange", True),
+        ("fiftyTwoWeekHighChangePercent", False),
+    ],
 }
 
 PERCENTAGE_DATA_KEYS_NEEDING_MULTIPLICATION: Final = [
     "fiftyDayAverageChangePercent",
     "twoHundredDayAverageChangePercent",
+    "fiftyTwoWeekLowChangePercent",
+    "fiftyTwoWeekHighChangePercent",
 ]
 
 
