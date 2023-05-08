@@ -161,6 +161,13 @@ def test_invalid_scan_interval(hass, scan_interval):
         parse_scan_interval(scan_interval)
 
 
+def test_none_scan_interval(hass):
+    """Test none scan interval."""
+
+    assert parse_scan_interval("NONE") is None
+    assert parse_scan_interval("none") is None
+
+
 async def test_setup_optionally_requests_coordinator_refresh(
     hass, enable_custom_integrations
 ):
@@ -199,7 +206,6 @@ async def test_refresh_symbols_service(hass, enable_custom_integrations):
     with patch(
         f"{YSUC}._async_update", AsyncMock(return_value=None)
     ) as mock_async_request_refresh:
-
         assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
         await hass.async_block_till_done()
         assert mock_async_request_refresh.call_count == 1
@@ -215,13 +221,50 @@ async def test_refresh_symbols_service(hass, enable_custom_integrations):
         assert mock_async_request_refresh.call_count == 2
 
 
-def test_symbol_definition_comparison():
+@pytest.mark.parametrize(
+    "sym1,sym2,expected",
+    [
+        (SymbolDefinition("ABC"), SymbolDefinition("ABC"), True),  # Same symbol
+        (SymbolDefinition("ABC"), SymbolDefinition("DEF"), False),  # Different symbol
+        # Same target_currency
+        (
+            SymbolDefinition("ABC", target_currency="USD"),
+            SymbolDefinition("ABC", target_currency="USD"),
+            True,
+        ),
+        # Different target_currency
+        (
+            SymbolDefinition("ABC", target_currency="USD"),
+            SymbolDefinition("ABC", target_currency="EUR"),
+            False,
+        ),
+        # Same scan_interval
+        (
+            SymbolDefinition("ABC", scan_interval=timedelta(seconds=20)),
+            SymbolDefinition("ABC", scan_interval=timedelta(seconds=20)),
+            True,
+        ),
+        # Different scan_interval
+        (
+            SymbolDefinition("ABC", scan_interval=timedelta(seconds=20)),
+            SymbolDefinition("ABC", scan_interval=timedelta(seconds=10)),
+            False,
+        ),
+    ],
+)
+def test_symbol_definition_comparison(
+    sym1: SymbolDefinition, sym2: SymbolDefinition, expected: bool
+):
     """Test SymbolDefinition instance comparison."""
-    sym1 = SymbolDefinition("ABC")
-    sym2 = SymbolDefinition("ABC")
-    assert sym1 == sym2
-    assert hash(sym1) == hash(sym2)
-    assert str(sym1) == str(sym2)
+
+    if expected:
+        assert sym1 == sym2
+        assert hash(sym1) == hash(sym2)
+        assert str(sym1) == str(sym2)
+    else:
+        assert sym1 != sym2
+        assert hash(sym1) != hash(sym2)
+        assert str(sym1) != str(sym2)
 
 
 @pytest.mark.parametrize(
