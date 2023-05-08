@@ -53,6 +53,12 @@ postMarketTime: 0
 twoHundredDayAverage: 14.69
 twoHundredDayAverageChange: 8.2
 twoHundredDayAverageChangePercent: 0.08
+fiftyTwoWeekLow: 125
+fiftyTwoWeekLowChange: 20.37
+fiftyTwoWeekLowChangePercent: 16.29
+fiftyTwoWeekHigh: 153.1
+fiftyTwoWeekHighChange: -7.74
+fiftyTwoWeekHighChangePercent: -5.05
 trending: up
 unit_of_measurement: USD
 friendly_name: Ivy Science & Technology Fund C
@@ -87,6 +93,7 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
 - The fifty_day, post, pre and two_hundred attributes can be suppressed as following. They are included by default.
   ```yaml
   include_fifty_day_values: false
+  include_fifty_two_week_values: false
   include_post_values: false
   include_pre_values: false
   include_two_hundred_day_values: false
