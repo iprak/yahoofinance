@@ -222,7 +222,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = {}
     crumb_coordinator = CrumbCoordinator(hass)
-    await crumb_coordinator.try_get_crumb()  # Get crumb first
+    await crumb_coordinator.try_get_crumb_cookies()  # Get crumb first
 
     for key_scan_interval, symbols in symbols_by_scan_interval.items():
         _LOGGER.info(

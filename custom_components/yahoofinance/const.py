@@ -125,9 +125,19 @@ BASE: Final = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="
 
 CRUMB_URL: Final = "https://finance.yahoo.com/quote/NQ%3DF"
 CONSENT_HOST: Final = "consent.yahoo.com"
+
+# pylint: disable=line-too-long
 USER_AGENT: Final = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
 HEADER_ACCEPT: Final = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+# pylint: enable=line-too-long
+
 HEADER_ACCEPT_ENCODING: Final = "gzip, deflate, br"
+
+REQUEST_HEADERS: Final = {
+    "User-Agent": USER_AGENT,
+    "accept-encoding": HEADER_ACCEPT_ENCODING,
+    "accept": HEADER_ACCEPT,
+}
 
 CONF_SYMBOLS: Final = "symbols"
 DEFAULT_CURRENCY: Final = "USD"
