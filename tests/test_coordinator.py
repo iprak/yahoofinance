@@ -19,8 +19,9 @@ from custom_components.yahoofinance.coordinator import (
     FAILURE_ASYNC_REQUEST_REFRESH,
     CrumbCoordinator,
 )
+from tests import TEST_CRUMB, TEST_SYMBOL
+from tests.conftest import create_mock_coordinator
 
-TEST_SYMBOL = "BABA"
 TEST_SYMBOL2 = "RBOT.L"
 SECOND_TEST_SYMBOL = "^SSMI"
 YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
@@ -37,11 +38,11 @@ YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
     ],
 )
 @pytest.mark.asyncio
-async def test_incomplete_json(hass, parsed_json, message):
+async def test_incomplete_json(hass, parsed_json, message, mocked_crumb_coordinator):
     """Existing data is not updated if JSON is invalid."""
 
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        None, hass, DEFAULT_SCAN_INTERVAL, CrumbCoordinator(hass)
+        None, hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
     )
     mock_coordinator.get_json = AsyncMock(return_value=parsed_json)
 
@@ -68,11 +69,11 @@ async def test_incomplete_json(hass, parsed_json, message):
     ],
 )
 @pytest.mark.asyncio
-async def test_json_download_failure(hass, raised_exception):
-    """Existing data is not updated if exception enocuntered while downloading json."""
+async def test_json_download_failure(hass, raised_exception, mocked_crumb_coordinator):
+    """Existing data is not updated if exception encountered while downloading json."""
 
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, CrumbCoordinator(hass)
+        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
     )
     mock_coordinator.websession.get = AsyncMock(side_effect=raised_exception)
 
@@ -94,22 +95,11 @@ async def test_json_download_failure(hass, raised_exception):
 
 
 @pytest.mark.asyncio
-async def test_successful_data_parsing(hass, mock_json):
+async def test_successful_data_parsing(hass, mocked_crumb_coordinator, mock_json):
     """Tests successful data parsing."""
 
-    crumb = "!123"
-    cc = CrumbCoordinator(hass)
-    cc.try_get_crumb_cookies = AsyncMock(return_value=crumb)
-
-    mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, cc
-    )
-
-    mock_response = Mock()
-    mock_response.status = HTTPStatus.OK
-    mock_response.json = AsyncMock(return_value=mock_json)
-
-    mock_coordinator.websession.get = AsyncMock(return_value=mock_response)
+    mock_coordinator = create_mock_coordinator(hass, mocked_crumb_coordinator)
+    mock_coordinator.get_json = AsyncMock(return_value=mock_json)
 
     await mock_coordinator.async_refresh()
     await hass.async_block_till_done()
@@ -120,10 +110,10 @@ async def test_successful_data_parsing(hass, mock_json):
 
 
 @pytest.mark.asyncio
-async def test_add_symbol(hass):
+async def test_add_symbol(hass, mocked_crumb_coordinator):
     """Add symbol for load."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [], hass, DEFAULT_SCAN_INTERVAL, CrumbCoordinator(hass)
+        [], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
     )
 
     with patch("homeassistant.helpers.event.async_call_later") as mock_call_later:
@@ -133,19 +123,19 @@ async def test_add_symbol(hass):
 
 
 @pytest.mark.asyncio
-async def test_add_symbol_existing(hass):
+async def test_add_symbol_existing(hass, mocked_crumb_coordinator):
     """Test check for existing symbols."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, CrumbCoordinator(hass)
+        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
     )
     assert mock_coordinator.add_symbol(TEST_SYMBOL) is False
 
 
 @pytest.mark.asyncio
-async def test_update_interval_when_update_fails(hass):
+async def test_update_interval_when_update_fails(hass, mocked_crumb_coordinator):
     """Update interval for the next async_track_point_in_utc_time call."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, CrumbCoordinator(hass)
+        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
     )
 
     # update_interval is DEFAULT_SCAN_INTERVAL
@@ -157,12 +147,12 @@ async def test_update_interval_when_update_fails(hass):
         seconds=FAILURE_ASYNC_REQUEST_REFRESH
     )
 
-
 @pytest.mark.asyncio
-async def test_update_when_update_is_disabled(hass):
+async def test_update_when_update_is_disabled(hass, mocked_crumb_coordinator):
     """No update is performed if update_interval is None."""
+
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, None, CrumbCoordinator(hass)
+        [TEST_SYMBOL], hass, None, mocked_crumb_coordinator
     )
 
     mock_coordinator.last_update_success = False
@@ -193,10 +183,12 @@ async def test_update_when_update_is_disabled(hass):
         ("EUR=X", {"shortName": "/EUR"}, "EUR=X"),  # shortName is invalid
     ],
 )
-def test_fix_conversion_symbol(hass, symbol, symbol_data, expected_symbol):
+def test_fix_conversion_symbol(
+    hass, symbol, symbol_data, expected_symbol, mocked_crumb_coordinator
+):
     """Test conversion symbol correction."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, None, CrumbCoordinator(hass)
+        [TEST_SYMBOL], hass, None, mocked_crumb_coordinator
     )
     assert (
         mock_coordinator.fix_conversion_symbol(symbol, symbol_data) == expected_symbol
@@ -241,11 +233,16 @@ def test_fix_conversion_symbol(hass, symbol, symbol_data, expected_symbol):
     ],
 )
 def test_process_json_result(
-    hass, symbols, result, expected_error_encountered, expected_conversion_count
+    hass,
+    symbols,
+    result,
+    expected_error_encountered,
+    expected_conversion_count,
+    mocked_crumb_coordinator,
 ):
     """No update is performed if update_interval is None."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        symbols, hass, None, CrumbCoordinator(hass)
+        symbols, hass, None, mocked_crumb_coordinator
     )
 
     def prefix_conversion_symbol(symbol: str, symbol_data: any):
@@ -262,10 +259,12 @@ def test_process_json_result(
 
 
 @pytest.mark.asyncio
-async def test_logging_when_process_json_result_reports_error(hass, mock_json):
+async def test_logging_when_process_json_result_reports_error(
+    hass, mock_json, mocked_crumb_coordinator
+):
     """Tests call to logger.info() when process_json_result reports an error."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, CrumbCoordinator(hass)
+        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
     )
 
     mock_response = Mock()
@@ -301,20 +300,16 @@ def test_crumbcoordinator_reset(hass):
 
 
 @pytest.mark.asyncio
-async def test_build_request_url(hass):
+async def test_build_request_url(hass, mocked_crumb_coordinator):
     """Test build_request_url."""
 
-    crumb = "!123"
-    cc = CrumbCoordinator(hass)
-    cc.try_get_crumb_cookies = AsyncMock(return_value=crumb)
-
     mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, cc
+        [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
     )
-    print(await mock_coordinator.build_request_url())
+    # print(await mock_coordinator.build_request_url())
     assert (
         await mock_coordinator.build_request_url()
-        == BASE + TEST_SYMBOL + "&crumb=" + crumb
+        == BASE + TEST_SYMBOL + "&crumb=" + TEST_CRUMB
     )
 
 

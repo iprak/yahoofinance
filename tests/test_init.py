@@ -3,8 +3,6 @@
 from datetime import timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.setup import async_setup_component
 import pytest
 import voluptuous as vol
 
@@ -16,6 +14,7 @@ from custom_components.yahoofinance import (
 from custom_components.yahoofinance.const import (
     CONF_DECIMAL_PLACES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
+    CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
     CONF_INCLUDE_POST_VALUES,
     CONF_INCLUDE_PRE_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
@@ -23,6 +22,7 @@ from custom_components.yahoofinance.const import (
     CONF_SYMBOLS,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
+    DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
     DEFAULT_CONF_INCLUDE_POST_VALUES,
     DEFAULT_CONF_INCLUDE_PRE_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
@@ -30,12 +30,17 @@ from custom_components.yahoofinance.const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     HASS_DATA_CONFIG,
+    HASS_DATA_COORDINATORS,
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.setup import async_setup_component
+from tests import TEST_CRUMB, TEST_SYMBOL
 
-SAMPLE_CONFIG = {DOMAIN: {CONF_SYMBOLS: ["BABA"]}}
+SAMPLE_CONFIG = {DOMAIN: {CONF_SYMBOLS: [TEST_SYMBOL]}}
 YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
+YCC = "custom_components.yahoofinance.CrumbCoordinator"
 DEFAULT_OPTIONAL_CONFIG = {
     CONF_DECIMAL_PLACES: DEFAULT_CONF_DECIMAL_PLACES,
     CONF_INCLUDE_FIFTY_DAY_VALUES: DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -44,6 +49,7 @@ DEFAULT_OPTIONAL_CONFIG = {
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
+    CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
 }
 
 
@@ -121,26 +127,36 @@ def create_symbol_definition(symbol: str) -> SymbolDefinition:
     ],
 )
 async def test_setup_refreshes_data_coordinator_and_loads_platform(
-    hass, domain_config, expected_partial_config, enable_custom_integrations
+    hass,
+    domain_config,
+    expected_partial_config,
+    enable_custom_integrations
 ):
     """Component setup refreshed data coordinator and loads the platform."""
 
     # pylint: disable=unused-argument
     # enable_custom_integrations is used
 
-    config = {DOMAIN: domain_config}
+    with patch(YSUC) as coordinator_type, patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)):
+        mock_instance = Mock()
+        mock_instance.async_refresh = AsyncMock(return_value=None)
+        mock_instance.async_request_refresh = AsyncMock(return_value=None)
+        # Mock `last_update_success` to be False which results in a call to `async_request_refresh`
+        mock_instance.last_update_success = False
+        coordinator_type.return_value = mock_instance
+        #coordinator_type.return_value = mock_coordinator
 
-    assert await async_setup_component(hass, DOMAIN, config) is True
-    await hass.async_block_till_done()
+        config = {DOMAIN: domain_config}
 
-    assert DOMAIN in hass.data
+        assert await async_setup_component(hass, DOMAIN, config) is True
+        await hass.async_block_till_done()
 
-    expected_config = DEFAULT_OPTIONAL_CONFIG.copy()
-    expected_config.update(expected_partial_config)
+        assert DOMAIN in hass.data
 
-    print(expected_config)
-    print(hass.data[DOMAIN][HASS_DATA_CONFIG])
-    assert expected_config == hass.data[DOMAIN][HASS_DATA_CONFIG]
+        expected_config = DEFAULT_OPTIONAL_CONFIG.copy()
+        expected_config.update(expected_partial_config)
+
+        assert expected_config == hass.data[DOMAIN][HASS_DATA_CONFIG]
 
 
 @pytest.mark.parametrize(
@@ -168,6 +184,7 @@ def test_none_scan_interval(hass):
     assert parse_scan_interval("none") is None
 
 
+#, mock_coordinator
 async def test_setup_optionally_requests_coordinator_refresh(
     hass, enable_custom_integrations
 ):
@@ -176,7 +193,7 @@ async def test_setup_optionally_requests_coordinator_refresh(
     # pylint: disable=unused-argument
     # enable_custom_integrations is used
 
-    with patch(YSUC) as mock_coordinator:
+    with patch(YSUC) as coordinator_type, patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)):
         mock_instance = Mock()
         mock_instance.async_refresh = AsyncMock(return_value=None)
         mock_instance.async_request_refresh = AsyncMock(return_value=None)
@@ -184,26 +201,25 @@ async def test_setup_optionally_requests_coordinator_refresh(
         # Mock `last_update_success` to be False which results in a call to `async_request_refresh`
         mock_instance.last_update_success = False
 
-        mock_coordinator.return_value = mock_instance
+        coordinator_type.return_value = mock_instance
 
         assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
         await hass.async_block_till_done()
 
-        assert mock_coordinator.called_with(
+        assert mock_instance.called_with(
             SAMPLE_CONFIG[DOMAIN][CONF_SYMBOLS], hass, DEFAULT_SCAN_INTERVAL
         )
         assert mock_instance.async_refresh.call_count == 1
         assert mock_instance.async_request_refresh.call_count == 1
 
 
-async def test_refresh_symbols_service(hass, enable_custom_integrations):
+async def test_refresh_symbols_service(
+    hass,
+    enable_custom_integrations,
+):
     """Test refresh_symbols service callback."""
 
-    # pylint: disable=unused-argument
-    # enable_custom_integrations is used
-
-    # Mock the refresh callback `_async_update` for testing
-    with patch(
+    with patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)), patch(
         f"{YSUC}._async_update", AsyncMock(return_value=None)
     ) as mock_async_request_refresh:
         assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
@@ -217,8 +233,11 @@ async def test_refresh_symbols_service(hass, enable_custom_integrations):
             blocking=True,
         )
         await hass.async_block_till_done()
-
         assert mock_async_request_refresh.call_count == 2
+
+        coordinators = hass.data[DOMAIN][HASS_DATA_COORDINATORS]
+        coord = list(coordinators.values())[0]
+        await coord.async_shutdown()
 
 
 @pytest.mark.parametrize(
