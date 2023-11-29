@@ -1,5 +1,4 @@
-"""
-The Yahoo finance component.
+"""The Yahoo finance component.
 
 https://github.com/iprak/yahoofinance
 """
@@ -15,6 +14,8 @@ from typing import Final
 
 import aiohttp
 import async_timeout
+
+from custom_components.yahoofinance.const import CONSENT_HOST, CRUMB_URL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import event
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -22,8 +23,6 @@ from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.dt import utcnow
 from homeassistant.util.file import write_utf8_file
-
-from custom_components.yahoofinance.const import CONSENT_HOST, CRUMB_URL
 
 from .const import (
     BASE,
@@ -357,8 +356,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         return None
 
     async def _async_update(self) -> dict:
-        """
-        Return updated data if new JSON is valid.
+        """Return updated data if new JSON is valid.
 
         The exception will get properly handled in the caller (DataUpdateCoordinator.async_refresh)
         which also updates last_update_success. UpdateFailed is raised if JSON is invalid.

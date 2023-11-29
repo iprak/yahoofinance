@@ -2,7 +2,6 @@
 import copy
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-from homeassistant.const import CONF_SCAN_INTERVAL
 import pytest
 
 from custom_components.yahoofinance import (
@@ -42,6 +41,8 @@ from custom_components.yahoofinance.sensor import (
     YahooFinanceSensor,
     async_setup_platform,
 )
+from homeassistant.const import CONF_SCAN_INTERVAL
+from tests import TEST_SYMBOL
 
 DEFAULT_OPTIONAL_CONFIG = {
     CONF_DECIMAL_PLACES: DEFAULT_CONF_DECIMAL_PLACES,
@@ -111,12 +112,12 @@ async def test_setup_platform(hass):
     """Test platform setup."""
 
     async_add_entities = MagicMock()
-    mock_coordinator = build_mock_coordinator(hass, True, "BABA", 12)
+    mock_coordinator = build_mock_coordinator(hass, True, TEST_SYMBOL, 12)
     mock_coordinators = {DEFAULT_SCAN_INTERVAL: mock_coordinator}
 
     config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
     config[CONF_SYMBOLS] = [
-        SymbolDefinition("BABA", scan_interval=DEFAULT_SCAN_INTERVAL)
+        SymbolDefinition(TEST_SYMBOL, scan_interval=DEFAULT_SCAN_INTERVAL)
     ]
 
     hass.data = {
@@ -342,10 +343,12 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(hass)
     assert sensor.icon == f"mdi:currency-{lower_currency}"
 
 
-async def test_data_from_json(hass, mock_json):
+async def test_data_from_json(hass, mock_json, mocked_crumb_coordinator):
     """Tests data update all the way from from json."""
-    symbol = "BABA"
-    coordinator = YahooSymbolUpdateCoordinator([symbol], hass, DEFAULT_SCAN_INTERVAL)
+    symbol = TEST_SYMBOL
+    coordinator = YahooSymbolUpdateCoordinator(
+        [symbol], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
+    )
     coordinator.get_json = AsyncMock(return_value=mock_json)
 
     await coordinator.async_refresh()

@@ -2,6 +2,6 @@
 * text eol=lf
 
 # Declare files that will always have CRLF line endings on checkout.
-*.py text eol=crlf
+*.py text eol=lf
 
 *.sh text eol=lf
