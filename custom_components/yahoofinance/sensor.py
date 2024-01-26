@@ -121,6 +121,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._decimal_places = domain_config[CONF_DECIMAL_PLACES]
         self._previous_close = None
         self._target_currency = symbol_definition.target_currency
+        self._no_unit = symbol_definition.no_unit
 
         self._unique_id = symbol
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
@@ -199,6 +200,9 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_unit_of_measurement(self) -> str | None:
         """Return the unit of measurement of the sensor, if any."""
+        if self._no_unit:
+            return None
+
         if self._target_currency:
             return self._target_currency
         return self._currency

@@ -8,7 +8,7 @@ logbook:
 logger:
   default: info
   logs:
-    custom_components.yahoofinance: info
+    custom_components.yahoofinance: debug
 
 yahoofinance:
   show_trending_icon: true
@@ -21,11 +21,13 @@ yahoofinance:
 
   symbols:
     - symbol: GBPUSD=X
+      no_unit: true
     - symbol: IDFCBANK.BO
     - symbol: baba
       target_currency: inr
       scan_interval: 30
-    - ^SSMI
+    - symbol: ^SSMI
+      no_unit: true
     - symbol: EMIM.L
       target_currency: EUR
       scan_interval: 30
