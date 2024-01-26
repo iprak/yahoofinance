@@ -154,6 +154,7 @@ CURRENCY_CODES: Final = {
     "bdt": "৳",
     "brl": "R$",
     "btc": "₿",
+    "chf": "₣",
     "cny": "¥",
     "eth": "Ξ",
     "eur": "€",
