@@ -46,7 +46,6 @@ from .const import (
     DATA_REGULAR_MARKET_PRICE,
     DATA_SHORT_NAME,
     DEFAULT_CURRENCY,
-    DEFAULT_ICON,
     DEFAULT_NUMERIC_DATA_GROUP,
     DOMAIN,
     HASS_DATA_CONFIG,
@@ -92,7 +91,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
     # pylint: disable=too-many-instance-attributes
     _currency = DEFAULT_CURRENCY
-    _icon = DEFAULT_ICON
+    _icon = None
     _market_price = None
     _short_name = None
     _target_currency = None

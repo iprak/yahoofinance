@@ -143,7 +143,6 @@ REQUEST_HEADERS: Final = {
 CONF_SYMBOLS: Final = "symbols"
 DEFAULT_CURRENCY: Final = "USD"
 DEFAULT_CURRENCY_SYMBOL: Final = "$"
-DEFAULT_ICON: Final = "mdi:currency-usd"
 DOMAIN: Final = "yahoofinance"
 SERVICE_REFRESH: Final = "refresh_symbols"
 
