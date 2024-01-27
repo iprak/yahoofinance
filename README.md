@@ -120,6 +120,8 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
     hours: 4
   ```
 
+- The `unit_of_measurement` can be suppressed by setting `no_unit: true`. This could be used for index symbols if no currency unit is desired to be displayed.
+
 ## Examples
 
 - The symbol can also represent a financial index such as [this](https://finance.yahoo.com/world-indices/).
