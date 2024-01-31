@@ -120,7 +120,17 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
     hours: 4
   ```
 
+  ```yaml
+  scan_interval:
+    minutes: 5
+  ```
+
+  ```yaml
+  scan_interval: 300
+  ```
+
 - The `unit_of_measurement` can be suppressed by setting `no_unit: true`. This could be used for index symbols if no currency unit is desired to be displayed.
+  - **Note:** Using this setting will generate a warning like `The unit of sensor.yahoofinance_gspc cannot be converted to the unit of previously compiled statistics (USD). Generation of long term statistics will be suppressed unless the unit changes back to USD or a compatible unit.` You will have to manually resolve it as mentioned in the message otherwise new data might not show in cards.
 
 ## Examples
 
@@ -132,10 +142,27 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
   ```
 
 - Yahoo also provides currency conversion as a symbol.
+
   ```yaml
   symbols:
     - GBPUSD=X
   ```
+
+- A complete sample
+
+```
+yahoofinance:
+  include_post_values: false
+  include_pre_values: false
+  show_trending_icon: true
+  decimal_places: 2
+  can_interval:
+    hours: 4
+  symbols:
+    - USDINR=X
+    - UNP
+```
+
 - The trending icons themselves cannot be colored but colors can be added using [lovelace-card-mod](https://github.com/thomasloven/lovelace-card-mod). Here [auto-entities](https://github.com/thomasloven/lovelace-auto-entities) is being used to simplify the code.
 
   ```yaml
