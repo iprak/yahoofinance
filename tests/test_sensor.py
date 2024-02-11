@@ -165,7 +165,7 @@ def test_sensor_creation(
     for data_group in NUMERIC_DATA_GROUPS.values():
         for value in data_group:
             key = value[0]
-            if (key != DATA_REGULAR_MARKET_PRICE) and (key != DATA_DIVIDEND_DATE):
+            if (key != DATA_REGULAR_MARKET_PRICE) and (key != DATA_DIVIDEND_DATE):   # noqa: PLR1714
                 assert attributes[key] == 0
 
     # Since we did not provide any data so currency should be the default value

@@ -4,13 +4,8 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-import voluptuous as vol
 
-from custom_components.yahoofinance import (
-    SymbolDefinition,
-    convert_to_float,
-    parse_scan_interval,
-)
+from custom_components.yahoofinance import SymbolDefinition, convert_to_float
 from custom_components.yahoofinance.const import (
     CONF_DECIMAL_PLACES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -31,6 +26,7 @@ from custom_components.yahoofinance.const import (
     DOMAIN,
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATORS,
+    MANUAL_SCAN_INTERVAL,
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
@@ -52,45 +48,69 @@ DEFAULT_OPTIONAL_CONFIG = {
     CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
 }
 
-
-def create_symbol_definition(symbol: str) -> SymbolDefinition:
-    """Create a SymbolDefinition with DEFAULT_SCAN_INTERVAL."""
-    return SymbolDefinition(symbol, scan_interval=DEFAULT_SCAN_INTERVAL)
+@pytest.mark.parametrize(
+    "domain_config",
+    [
+        # a is invalid interval
+        {
+            CONF_SYMBOLS: ["xyz"],
+            CONF_SCAN_INTERVAL: "a"
+        },
+        # less than MINIMUM_SCAN_INTERVAL
+        {
+            CONF_SYMBOLS: ["xyz"],
+            CONF_SCAN_INTERVAL: MINIMUM_SCAN_INTERVAL + timedelta(seconds = -1)
+        },
+        {
+            CONF_SYMBOLS: ["xyz"],
+            CONF_SCAN_INTERVAL: None
+        }
+    ]
+)
+async def test_invalid_global_scan_interval(
+    hass,
+    domain_config,
+    enable_custom_integrations
+):
+    """Check for invalid scan_interval."""
+    assert await async_setup_component(hass, DOMAIN, {DOMAIN: domain_config}) is False
 
 
 @pytest.mark.parametrize(
     "domain_config, expected_partial_config",
     [
         (
-            # Normalize test
+            # Simple format - no scan_interval defaults to DEFAULT_SCAN_INTERVAL
             {CONF_SYMBOLS: ["xyz"]},
-            {CONF_SYMBOLS: [create_symbol_definition("XYZ")]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=DEFAULT_SCAN_INTERVAL)]},
         ),
         (
-            # Another normalize test
+            # Expanded format - no scan_interval defaults to DEFAULT_SCAN_INTERVAL
             {CONF_SYMBOLS: [{"symbol": "xyz"}]},
-            {CONF_SYMBOLS: [create_symbol_definition("XYZ")]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=DEFAULT_SCAN_INTERVAL)]},
         ),
         (
+            # Mix of Simple and expanded formats - no scan_interval defaults to DEFAULT_SCAN_INTERVAL
             {CONF_SYMBOLS: [{"symbol": "xyz"}, "abc"]},
             {
                 CONF_SYMBOLS: [
-                    create_symbol_definition("XYZ"),
-                    create_symbol_definition("ABC"),
+                    SymbolDefinition("XYZ", scan_interval=DEFAULT_SCAN_INTERVAL),
+                    SymbolDefinition("ABC", scan_interval=DEFAULT_SCAN_INTERVAL),
                 ]
             },
         ),
         (
-            # Duplicate removal test
+            # Simple format - Duplicate removed, scan_interval defaults to DEFAULT_SCAN_INTERVAL
             {CONF_SYMBOLS: ["xyz", "xyz"]},
-            {CONF_SYMBOLS: [create_symbol_definition("XYZ")]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=DEFAULT_SCAN_INTERVAL)]},
         ),
         (
-            # Another duplicate removal test
+            # Mixed formats - duplicate removed, scan_interval defaults to DEFAULT_SCAN_INTERVAL
             {CONF_SYMBOLS: [{"symbol": "xyz"}, "xyz"]},
-            {CONF_SYMBOLS: [create_symbol_definition("XYZ")]},
+            {CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=DEFAULT_SCAN_INTERVAL)]},
         ),
         (
+            # Simple format - custom global scan interval
             {
                 CONF_SYMBOLS: ["xyz"],
                 CONF_SCAN_INTERVAL: 3600,
@@ -105,37 +125,62 @@ def create_symbol_definition(symbol: str) -> SymbolDefinition:
             },
         ),
         (
+            # Expanded format - custom global scan interval
             {
-                CONF_SYMBOLS: ["xyz"],
-                CONF_SCAN_INTERVAL: "None",
+                CONF_SYMBOLS: [{"symbol": "xyz"}],
+                CONF_SCAN_INTERVAL: 3600,
+                CONF_DECIMAL_PLACES: 3,
             },
             {
-                CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=None)],
-                CONF_SCAN_INTERVAL: None,
+                CONF_SYMBOLS: [
+                    SymbolDefinition("XYZ", scan_interval=timedelta(seconds=3600))
+                ],
+                CONF_SCAN_INTERVAL: timedelta(hours=1),
+                CONF_DECIMAL_PLACES: 3,
             },
         ),
         (
+            # Simple format - MANUAL_SCAN_INTERVAL global scan interval
             {
                 CONF_SYMBOLS: ["xyz"],
-                CONF_SCAN_INTERVAL: "none",
+                CONF_SCAN_INTERVAL: MANUAL_SCAN_INTERVAL,
             },
             {
-                CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=None)],
-                CONF_SCAN_INTERVAL: None,
+                CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=MANUAL_SCAN_INTERVAL)],
+                CONF_SCAN_INTERVAL: MANUAL_SCAN_INTERVAL,
+            },
+        ),
+        (
+            # Expanded format - MANUAL_SCAN_INTERVAL global scan interval
+            {
+                CONF_SYMBOLS: [{"symbol": "xyz"}],
+                CONF_SCAN_INTERVAL: MANUAL_SCAN_INTERVAL,
+            },
+            {
+                CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=MANUAL_SCAN_INTERVAL)],
+                CONF_SCAN_INTERVAL: MANUAL_SCAN_INTERVAL,
+            },
+        ),
+        (
+            # Expanded format - override None scan interval
+            {
+                CONF_SYMBOLS: [{"symbol": "xyz", "scan_interval": MANUAL_SCAN_INTERVAL}],
+                CONF_SCAN_INTERVAL: 3600
+            },
+            {
+                CONF_SYMBOLS: [SymbolDefinition("XYZ", scan_interval=MANUAL_SCAN_INTERVAL)],
+                CONF_SCAN_INTERVAL: timedelta(hours=1),
             },
         ),
     ],
 )
-async def test_setup_refreshes_data_coordinator_and_loads_platform(
+async def test_scan_interval(
     hass,
     domain_config,
     expected_partial_config,
     enable_custom_integrations
 ):
     """Component setup refreshed data coordinator and loads the platform."""
-
-    # pylint: disable=unused-argument
-    # enable_custom_integrations is used
 
     with patch(YSUC) as coordinator_type, patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)):
         mock_instance = Mock()
@@ -144,13 +189,10 @@ async def test_setup_refreshes_data_coordinator_and_loads_platform(
         # Mock `last_update_success` to be False which results in a call to `async_request_refresh`
         mock_instance.last_update_success = False
         coordinator_type.return_value = mock_instance
-        #coordinator_type.return_value = mock_coordinator
 
         config = {DOMAIN: domain_config}
 
         assert await async_setup_component(hass, DOMAIN, config) is True
-        await hass.async_block_till_done()
-
         assert DOMAIN in hass.data
 
         expected_config = DEFAULT_OPTIONAL_CONFIG.copy()
@@ -159,32 +201,6 @@ async def test_setup_refreshes_data_coordinator_and_loads_platform(
         assert expected_config == hass.data[DOMAIN][HASS_DATA_CONFIG]
 
 
-@pytest.mark.parametrize(
-    "scan_interval",
-    [
-        (timedelta(-1)),
-        (MINIMUM_SCAN_INTERVAL - timedelta(seconds=1)),
-        ("None2"),
-    ],
-)
-def test_invalid_scan_interval(hass, scan_interval):
-    """Test invalid scan interval."""
-
-    # pylint: disable=unused-argument
-    # hass is used
-
-    with pytest.raises(vol.Invalid):
-        parse_scan_interval(scan_interval)
-
-
-def test_none_scan_interval(hass):
-    """Test none scan interval."""
-
-    assert parse_scan_interval("NONE") is None
-    assert parse_scan_interval("none") is None
-
-
-#, mock_coordinator
 async def test_setup_optionally_requests_coordinator_refresh(
     hass, enable_custom_integrations
 ):
