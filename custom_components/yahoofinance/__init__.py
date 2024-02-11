@@ -43,14 +43,23 @@ from .const import (
     DOMAIN,
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATORS,
+    MANUAL_SCAN_INTERVAL,
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
 BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
+
+def minimum_scan_interval(value: timedelta) -> timedelta:
+    """Validate scan_interval is the minimum value."""
+    if value < MINIMUM_SCAN_INTERVAL:
+        raise vol.Invalid("Scan interval should be at least 30 seconds")
+    return value
+
+MANUAL_SCAN_INTERVAL_SCHEMA = vol.All(vol.Lower, MANUAL_SCAN_INTERVAL)
+CUSTOM_SCAN_INTERVAL_SCHEMA = vol.All(cv.time_period, minimum_scan_interval)
+SCAN_INTERVAL_SCHEMA = vol.Any(MANUAL_SCAN_INTERVAL_SCHEMA, CUSTOM_SCAN_INTERVAL_SCHEMA)
 
 COMPLEX_SYMBOL_SCHEMA = vol.All(
     dict,
@@ -58,9 +67,7 @@ COMPLEX_SYMBOL_SCHEMA = vol.All(
         {
             vol.Required("symbol"): BASIC_SYMBOL_SCHEMA,
             vol.Optional(CONF_TARGET_CURRENCY): BASIC_SYMBOL_SCHEMA,
-            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.Any(
-                "none", "None", cv.positive_time_period
-            ),
+            vol.Optional(CONF_SCAN_INTERVAL): SCAN_INTERVAL_SCHEMA,
             vol.Optional(CONF_NO_UNIT, default=DEFAULT_CONF_NO_UNIT): cv.boolean,
         }
     ),
@@ -76,7 +83,7 @@ CONFIG_SCHEMA = vol.Schema(
                 ),
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
-                ): vol.Any("none", "None", cv.positive_time_period),
+                ): SCAN_INTERVAL_SCHEMA,
                 vol.Optional(CONF_TARGET_CURRENCY): vol.All(cv.string, vol.Upper),
                 vol.Optional(
                     CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
@@ -115,7 +122,7 @@ class SymbolDefinition:
 
     symbol: str
     target_currency: str | None = None
-    scan_interval: timedelta | None = None
+    scan_interval: str | timedelta | None = None
     no_unit: bool = False
 
     def __init__(self, symbol: str, **kwargs: any) -> None:
@@ -153,22 +160,6 @@ class SymbolDefinition:
         return hash((self.symbol, self.target_currency, self.scan_interval, self.no_unit))
 
 
-def parse_scan_interval(scan_interval: timedelta | str) -> timedelta:
-    """Parse and validate scan_interval."""
-    if isinstance(scan_interval, str):
-        if isinstance(scan_interval, str):
-            if scan_interval.lower() == "none":
-                scan_interval = None
-            else:
-                raise vol.Invalid(
-                    f"Invalid {CONF_SCAN_INTERVAL} specified: {scan_interval}"
-                )
-    elif scan_interval < MINIMUM_SCAN_INTERVAL:
-        raise vol.Invalid("Scan interval should be at least 30 seconds.")
-
-    return scan_interval
-
-
 def normalize_input_symbols(
     defined_symbols: list,
 ) -> tuple[list[str], list[SymbolDefinition]]:
@@ -189,9 +180,7 @@ def normalize_input_symbols(
                     SymbolDefinition(
                         symbol,
                         target_currency=value.get(CONF_TARGET_CURRENCY),
-                        scan_interval=parse_scan_interval(
-                            value.get(CONF_SCAN_INTERVAL)
-                        ),
+                        scan_interval=value.get(CONF_SCAN_INTERVAL),
                         no_unit=value.get(CONF_NO_UNIT),
                     )
                 )
@@ -208,17 +197,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     symbols, symbol_definitions = normalize_input_symbols(defined_symbols)
     domain_config[CONF_SYMBOLS] = symbol_definitions
 
-    scan_interval = parse_scan_interval(domain_config.get(CONF_SCAN_INTERVAL))
+    global_scan_interval = domain_config.get(CONF_SCAN_INTERVAL)
 
     # Populate parsed value into domain_config
-    domain_config[CONF_SCAN_INTERVAL] = scan_interval
+    domain_config[CONF_SCAN_INTERVAL] = global_scan_interval
 
     # Group symbols by scan_interval
     symbols_by_scan_interval: dict[timedelta, list[str]] = {}
     for symbol in symbol_definitions:
         # Use integration level scan_interval if none defined
         if symbol.scan_interval is None:
-            symbol.scan_interval = scan_interval
+            symbol.scan_interval = global_scan_interval
 
         if symbol.scan_interval in symbols_by_scan_interval:
             symbols_by_scan_interval[symbol.scan_interval].append(symbol.symbol)
