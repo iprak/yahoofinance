@@ -17,7 +17,9 @@ yahoofinance:
   #scan_interval: 30
 
   #Update disabled
-  #scan_interval: None
+  #scan_interval: "manual"
+
+  scan_interval: 30
 
   symbols:
     - symbol: GBPUSD=X
@@ -25,12 +27,14 @@ yahoofinance:
     - symbol: IDFCBANK.BO
     - symbol: baba
       target_currency: inr
-      scan_interval: 30
+      #scan_interval: 30
     - symbol: ^SSMI
       no_unit: true
     - symbol: EMIM.L
       target_currency: EUR
-      scan_interval: 30
+      #scan_interval: 30
     - symbol: AAPL
     - symbol: USDINR=X
-      scan_interval: 45
+      #scan_interval: 45
+    - symbol: ADYEN.AS
+      #scan_interval: "none"

@@ -78,7 +78,7 @@ The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
     hours: 4
   ```
 
-  You can disable automatic update by passing `None` for `scan_interval`.
+  You can disable automatic update by passing `manual` for `scan_interval`.
 
 - Trending icons (trending-up, trending-down or trending-neutral) can be displayed instead of currency based icon by specifying `show_trending_icon`.
   ```yaml

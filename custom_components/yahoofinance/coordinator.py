@@ -13,7 +13,6 @@ import re
 from typing import Final
 
 import aiohttp
-import async_timeout
 
 from custom_components.yahoofinance.const import CONSENT_HOST, CRUMB_URL, GET_CRUMB_URL
 from homeassistant.core import HomeAssistant, callback
@@ -27,6 +26,7 @@ from homeassistant.util.dt import utcnow
 from .const import (
     BASE,
     DATA_REGULAR_MARKET_PRICE,
+    MANUAL_SCAN_INTERVAL,
     NUMERIC_DATA_DEFAULTS,
     NUMERIC_DATA_GROUPS,
     REQUEST_HEADERS,
@@ -62,7 +62,7 @@ class CrumbCoordinator:
         self.reset()
 
         try:
-            async with async_timeout.timeout(WEBSESSION_TIMEOUT):
+            async with asyncio.timeout(WEBSESSION_TIMEOUT):
                 _LOGGER.debug("Navigating to a base Yahoo page")
 
                 # Websession.get handles redirects by default
@@ -223,9 +223,13 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         self.data = None
         self.loop = hass.loop
         self.websession = async_get_clientsession(hass)
-        self._update_interval = update_interval
         self._failure_update_interval = timedelta(seconds=FAILURE_ASYNC_REQUEST_REFRESH)
         self._cc = cc
+
+        if isinstance(update_interval, str) and update_interval == MANUAL_SCAN_INTERVAL:
+            update_interval = None
+
+        self._update_interval = update_interval
 
         super().__init__(
             hass,
@@ -306,7 +310,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Requesting data from '%s'", url)
 
         try:
-            async with async_timeout.timeout(WEBSESSION_TIMEOUT):
+            async with asyncio.timeout(WEBSESSION_TIMEOUT):
                 response = await self.websession.get(
                     url, headers=REQUEST_HEADERS, cookies=cookies
                 )
