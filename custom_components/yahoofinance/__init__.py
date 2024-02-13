@@ -18,6 +18,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -31,6 +32,7 @@ from .const import (
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CONF_TARGET_CURRENCY,
+    CRUMB_RETRY_DELAY,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
     DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
@@ -216,54 +218,63 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     _LOGGER.info("Total %d unique scan intervals", len(symbols_by_scan_interval))
 
-    coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = {}
-    crumb_coordinator = CrumbCoordinator(hass)
-    await crumb_coordinator.try_get_crumb_cookies()  # Get crumb first
-
-    for key_scan_interval, symbols in symbols_by_scan_interval.items():
-        _LOGGER.info(
-            "Creating coordinator with scan_interval %s for symbols %s",
-            key_scan_interval,
-            symbols,
-        )
-        coordinator = YahooSymbolUpdateCoordinator(
-            symbols, hass, key_scan_interval, crumb_coordinator
-        )
-        coordinators[key_scan_interval] = coordinator
-
-        _LOGGER.info(
-            "Requesting initial data from coordinator with update interval of %s.",
-            key_scan_interval,
-        )
-        await coordinator.async_refresh()
-
-    # Pass down the coordinator and config to platforms.
+     # Pass down the config to platforms.
     hass.data[DOMAIN] = {
-        HASS_DATA_COORDINATORS: coordinators,
         HASS_DATA_CONFIG: domain_config,
     }
 
-    async def handle_refresh_symbols(_call) -> None:
-        """Refresh symbol data."""
-        _LOGGER.info("Processing refresh_symbols")
+    async def _setup_coordinator(now = None) -> None:
+        crumb_coordinator = CrumbCoordinator(hass)
+        crumb = await crumb_coordinator.try_get_crumb_cookies()  # Get crumb first
+        if crumb is None:
+            _LOGGER.warning("Unable to get crumb, re-trying in %d seconds", CRUMB_RETRY_DELAY)
+            async_call_later(hass, CRUMB_RETRY_DELAY, _setup_coordinator)
+            return
 
-        for coordinator in coordinators.values():
+        coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = {}
+        for key_scan_interval, symbols in symbols_by_scan_interval.items():
+            _LOGGER.info(
+                "Creating coordinator with scan_interval %s for symbols %s",
+                key_scan_interval,
+                symbols,
+            )
+            coordinator = YahooSymbolUpdateCoordinator(
+                symbols, hass, key_scan_interval, crumb_coordinator
+            )
+            coordinators[key_scan_interval] = coordinator
+
+            _LOGGER.info(
+                "Requesting initial data from coordinator with update interval of %s.",
+                key_scan_interval,
+            )
             await coordinator.async_refresh()
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_REFRESH,
-        handle_refresh_symbols,
-    )
+        # Pass down the coordinator to platforms.
+        hass.data[DOMAIN][HASS_DATA_COORDINATORS] = coordinators
 
-    if not coordinator.last_update_success:
-        _LOGGER.debug("Coordinator did not report any data, requesting async_refresh")
-        hass.async_create_task(coordinator.async_request_refresh())
+        async def handle_refresh_symbols(_call) -> None:
+            """Refresh symbol data."""
+            _LOGGER.info("Processing refresh_symbols")
 
-    hass.async_create_task(
-        discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
-    )
+            for coordinator in coordinators.values():
+                await coordinator.async_refresh()
 
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REFRESH,
+            handle_refresh_symbols,
+        )
+
+        for coordinator in coordinators.values():
+            if not coordinator.last_update_success:
+                _LOGGER.debug("Coordinator did not report any data, requesting async_refresh")
+                hass.async_create_task(coordinator.async_request_refresh())
+
+        hass.async_create_task(
+            discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+        )
+
+    await _setup_coordinator()
     return True
 
 
