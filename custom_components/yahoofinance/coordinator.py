@@ -14,7 +14,6 @@ from typing import Final
 
 import aiohttp
 
-from custom_components.yahoofinance.const import CONSENT_HOST, CRUMB_URL, GET_CRUMB_URL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import event
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -25,7 +24,10 @@ from homeassistant.util.dt import utcnow
 #from homeassistant.util.file import write_utf8_file
 from .const import (
     BASE,
+    CONSENT_HOST,
+    CRUMB_URL,
     DATA_REGULAR_MARKET_PRICE,
+    GET_CRUMB_URL,
     MANUAL_SCAN_INTERVAL,
     NUMERIC_DATA_DEFAULTS,
     NUMERIC_DATA_GROUPS,
@@ -245,7 +247,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             return self._update_interval
 
         _LOGGER.warning(
-            "Error obtaining data, retrying in %d seconds.",
+            "Error obtaining data, retrying in %d seconds",
             FAILURE_ASYNC_REQUEST_REFRESH,
         )
         return self._failure_update_interval
@@ -294,7 +296,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             )
 
             _LOGGER.info(
-                "Added %s and requested update in %d seconds.",
+                "Added %s and requested update in %d seconds",
                 symbol,
                 DELAY_ASYNC_REQUEST_REFRESH,
             )

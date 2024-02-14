@@ -10,10 +10,6 @@ import logging
 
 import voluptuous as vol
 
-from custom_components.yahoofinance.coordinator import (
-    CrumbCoordinator,
-    YahooSymbolUpdateCoordinator,
-)
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import discovery
@@ -49,6 +45,7 @@ from .const import (
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
+from .coordinator import CrumbCoordinator, YahooSymbolUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
@@ -244,7 +241,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             coordinators[key_scan_interval] = coordinator
 
             _LOGGER.info(
-                "Requesting initial data from coordinator with update interval of %s.",
+                "Requesting initial data from coordinator with update interval of %s",
                 key_scan_interval,
             )
             await coordinator.async_refresh()
