@@ -190,6 +190,8 @@ The component exposes the service `yahoofinance.refresh_symbols` which can be us
 
 # Breaking Changes
 
+- As of version [1.2.5](https://github.com/iprak/yahoofinance/releases/), `scan_interval` can be `manual` to suppress automatic update.
+
 - As of version [1.1.0](https://github.com/iprak/yahoofinance/releases/), the entity id has changed from `yahoofinance.symbol` to `sensor.yahoofinance_symbol`.
 - As of version 1.0.0, all the configuration is now under `yahoofinance`. If you are upgrading from an older version, then you would need to adjust the configuration.
 - As of version 1.0.1, the minimum `scan_interval` is 30 seconds.
