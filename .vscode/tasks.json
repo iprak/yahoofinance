@@ -19,9 +19,9 @@
             "problemMatcher": []
         },
         {
-            "label": "Flake8",
+            "label": "Ruff",
             "type": "shell",
-            "command": "flake8",
+            "command": "pre-commit run ruff --all-files",
             "group": {
                 "kind": "test",
                 "isDefault": true
