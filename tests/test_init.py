@@ -1,7 +1,7 @@
 """Tests for Yahoo Finance component."""
 
 from datetime import timedelta
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -182,17 +182,18 @@ async def test_scan_interval(
 ):
     """Component setup refreshed data coordinator and loads the platform."""
 
-    with patch(YSUC) as coordinator_type, patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)):
-        mock_instance = Mock()
-        mock_instance.async_refresh = AsyncMock(return_value=None)
-        mock_instance.async_request_refresh = AsyncMock(return_value=None)
-        # Mock `last_update_success` to be False which results in a call to `async_request_refresh`
-        mock_instance.last_update_success = False
-        coordinator_type.return_value = mock_instance
+    mock_instance = MagicMock()
+    type(mock_instance).async_refresh = AsyncMock(return_value=None)
+    type(mock_instance).async_request_refresh = AsyncMock(return_value=None)
+    type(mock_instance).data = PropertyMock(return_value=None)
+    type(mock_instance).last_update_success = PropertyMock(return_value=False)
 
+    with patch(YSUC, return_value=mock_instance), patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)):
         config = {DOMAIN: domain_config}
 
         assert await async_setup_component(hass, DOMAIN, config) is True
+        await hass.async_block_till_done()
+
         assert DOMAIN in hass.data
 
         expected_config = DEFAULT_OPTIONAL_CONFIG.copy()
@@ -206,25 +207,16 @@ async def test_setup_optionally_requests_coordinator_refresh(
 ):
     """Component setup requests data coordinator refresh if it failed to load data."""
 
-    # pylint: disable=unused-argument
-    # enable_custom_integrations is used
+    mock_instance = MagicMock()
+    type(mock_instance).async_refresh = AsyncMock(return_value=None)
+    type(mock_instance).async_request_refresh = AsyncMock(return_value=None)
+    type(mock_instance).data = PropertyMock(return_value=None)
+    type(mock_instance).last_update_success = PropertyMock(return_value=False)
 
-    with patch(YSUC) as coordinator_type, patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)):
-        mock_instance = Mock()
-        mock_instance.async_refresh = AsyncMock(return_value=None)
-        mock_instance.async_request_refresh = AsyncMock(return_value=None)
-
-        # Mock `last_update_success` to be False which results in a call to `async_request_refresh`
-        mock_instance.last_update_success = False
-
-        coordinator_type.return_value = mock_instance
-
+    with patch(YSUC, return_value=mock_instance), patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)):
         assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
         await hass.async_block_till_done()
 
-        assert mock_instance.called_with(
-            SAMPLE_CONFIG[DOMAIN][CONF_SYMBOLS], hass, DEFAULT_SCAN_INTERVAL
-        )
         assert mock_instance.async_refresh.call_count == 1
         assert mock_instance.async_request_refresh.call_count == 1
 
