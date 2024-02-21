@@ -5,7 +5,7 @@
 	"appPort": "9123:8123",
 	"containerUser": "root",
 	"remoteUser": "root",
-	"postCreateCommand": "scripts/setup.sh",
+	"postCreateCommand": "/container_content/scripts/setup.sh",
 	"initializeCommand": "docker image pull ghcr.io/iprak/custom-integration-image:main",
 	"containerEnv": {
 		"TZ": "America/Chicago"
