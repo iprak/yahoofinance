@@ -13,23 +13,12 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-python.python",
-				"ms-python.vscode-pylance",
-				"esbenp.prettier-vscode",
-				"littlefoxteam.vscode-python-test-adapter",
-				"mhutchie.git-graph"
+				"charliermarsh.ruff",
+				"ms-python.pylint",
+				"ms-python.vscode-pylance"
 			],
 			"settings": {
-				"terminal.integrated.shell.linux": "/bin/bash",
 				"python.pythonPath": "/usr/local/bin/python",
-				"python.linting.enabled": true,
-				"python.linting.pylintEnabled": true,
-				"python.formatting.blackPath": "/usr/local/bin/black",
-				"python.linting.pycodestylePath": "/usr/local/bin/pycodestyle",
-				"python.linting.pydocstylePath": "/usr/local/bin/pydocstyle",
-				"python.linting.mypyPath": "/usr/local/bin/mypy",
-				"python.linting.pylintPath": "/usr/local/bin/pylint",
-				"python.formatting.provider": "black",
 				"python.testing.pytestArgs": [
 					"--no-cov"
 				],
@@ -37,11 +26,9 @@
 				"editor.formatOnSave": true,
 				"editor.formatOnType": true,
 				"files.trimTrailingWhitespace": true,
-				"files.eol": "\n",
-				"editor.tabSize": 4,
-				"python.analysis.autoSearchPaths": false,
-				"python.testing.pytestEnabled": true,
-				"python.testing.unittestEnabled": false
+				"[python]": {
+					"editor.defaultFormatter": "charliermarsh.ruff"
+				}
 			}
 		}
 	}
