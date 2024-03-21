@@ -156,7 +156,7 @@ yahoofinance:
   include_pre_values: false
   show_trending_icon: true
   decimal_places: 2
-  can_interval:
+  scan_interval:
     hours: 4
   symbols:
     - USDINR=X
