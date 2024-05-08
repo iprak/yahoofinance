@@ -13,6 +13,8 @@ ATTR_SYMBOL: Final = "symbol"
 ATTR_TRENDING: Final = "trending"
 ATTR_MARKET_STATE: Final = "marketState"
 ATTR_DIVIDEND_DATE: Final = "dividendDate"
+ATTR_REGULAR_MARKET_TIME: Final = "regularMarketTime"
+ATTR_POST_MARKET_TIME: Final = "postMarketTime"
 
 # Hass data
 HASS_DATA_CONFIG: Final = "config"
@@ -26,6 +28,9 @@ DATA_QUOTE_SOURCE_NAME: Final = "quoteSourceName"
 DATA_SHORT_NAME: Final = "shortName"
 DATA_MARKET_STATE: Final = "marketState"
 DATA_DIVIDEND_DATE: Final = "dividendDate"
+DATA_REGULAR_MARKET_TIME: Final = "regularMarketTime"
+DATA_POST_MARKET_TIME: Final = "postMarketTime"
+
 
 DATA_REGULAR_MARKET_PREVIOUS_CLOSE: Final = "regularMarketPreviousClose"
 DATA_REGULAR_MARKET_PRICE: Final = "regularMarketPrice"
@@ -66,7 +71,7 @@ NUMERIC_DATA_GROUPS: Final = {
         (DATA_REGULAR_MARKET_PREVIOUS_CLOSE, True),
         (DATA_REGULAR_MARKET_PRICE, True),
         ("regularMarketVolume", False),
-        ("regularMarketTime", False),
+        (DATA_REGULAR_MARKET_TIME, False),
         (DATA_DIVIDEND_DATE, False),
     ],
     CONF_INCLUDE_FIFTY_DAY_VALUES: [
@@ -84,7 +89,7 @@ NUMERIC_DATA_GROUPS: Final = {
         ("postMarketChange", True),
         ("postMarketChangePercent", False),
         ("postMarketPrice", True),
-        ("postMarketTime", False),
+        (DATA_POST_MARKET_TIME, False),
     ],
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: [
         ("twoHundredDayAverage", True),
@@ -160,6 +165,7 @@ CRUMB_RETRY_DELAY_429: Final = 60
 """Duration for crumb re-try when receiving 429 code."""
 
 CURRENCY_CODES: Final = {
+    "aud": "$",
     "bdt": "৳",
     "brl": "R$",
     "btc": "₿",
