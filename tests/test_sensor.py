@@ -23,6 +23,9 @@ from custom_components.yahoofinance.const import (
     DATA_DIVIDEND_DATE,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
+    DATA_PRE_MARKET_TIME,
+    DATA_POST_MARKET_TIME,
+    DATA_REGULAR_MARKET_TIME,
     DATA_SHORT_NAME,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -165,9 +168,9 @@ def test_sensor_creation(
     for data_group in NUMERIC_DATA_GROUPS.values():
         for value in data_group:
             key = value[0]
-            if (key != DATA_REGULAR_MARKET_PRICE) and (key != DATA_DIVIDEND_DATE):   # noqa: PLR1714
+            if (key != DATA_REGULAR_MARKET_PRICE) and (key != DATA_DIVIDEND_DATE) and (key != DATA_REGULAR_MARKET_TIME) and (key != DATA_PRE_MARKET_TIME) and (key != DATA_POST_MARKET_TIME):   # noqa: PLR1714
                 assert attributes[key] == 0
-
+   
     # Since we did not provide any data so currency should be the default value
     assert sensor.unit_of_measurement == DEFAULT_CURRENCY
     assert attributes[ATTR_CURRENCY_SYMBOL] == DEFAULT_CURRENCY_SYMBOL
