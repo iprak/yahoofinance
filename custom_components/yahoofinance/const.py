@@ -14,6 +14,7 @@ ATTR_TRENDING: Final = "trending"
 ATTR_MARKET_STATE: Final = "marketState"
 ATTR_DIVIDEND_DATE: Final = "dividendDate"
 ATTR_REGULAR_MARKET_TIME: Final = "regularMarketTime"
+ATTR_PRE_MARKET_TIME: Final = "preMarketTime"
 ATTR_POST_MARKET_TIME: Final = "postMarketTime"
 
 # Hass data
@@ -29,7 +30,9 @@ DATA_SHORT_NAME: Final = "shortName"
 DATA_MARKET_STATE: Final = "marketState"
 DATA_DIVIDEND_DATE: Final = "dividendDate"
 DATA_REGULAR_MARKET_TIME: Final = "regularMarketTime"
+DATA_PRE_MARKET_TIME: Final = 'preMarketTime'
 DATA_POST_MARKET_TIME: Final = "postMarketTime"
+
 
 
 DATA_REGULAR_MARKET_PREVIOUS_CLOSE: Final = "regularMarketPreviousClose"
@@ -82,7 +85,7 @@ NUMERIC_DATA_GROUPS: Final = {
     CONF_INCLUDE_PRE_VALUES: [
         ("preMarketChange", True),
         ("preMarketChangePercent", False),
-        ("preMarketTime", False),
+        (DATA_PRE_MARKET_TIME, False),
         ("preMarketPrice", True),
     ],
     CONF_INCLUDE_POST_VALUES: [
