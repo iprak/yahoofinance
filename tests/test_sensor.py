@@ -458,15 +458,21 @@ def test_conversion_not_attempted_if_target_currency_same(hass):
 
 
 @pytest.mark.parametrize(
-    "dividend_date,expected_date",
+    "epoch_date,return_format,expected_datetime",
     [
-        (None, None),
-        (1642118400, "2022-01-14"),
-        (1646870400, "2022-03-10"),
-        ("1646870400", "2022-03-10"),
-        ("164687040 0", None),
+        (None, "date", None),
+        (1642118400, "date","2022-01-14"),
+        (1646870400, "date","2022-03-10"),
+        ("1646870400", "date","2022-03-10"),
+        ("164687040 0", "date",None),
+        (1642118453, "datetime","2022-01-14T00:00:53+00:00"),
+        (1646878750, "datetime","2022-03-10T02:19:10+00:00"),
+        ("1646878750", "datetime","2022-03-10T02:19:10+00:00"),
+        ("164687040 0", "datetime",None),
+        (0, "date",0),
+        (0, "datetime",0),
     ],
 )
-def test_parse_dividend_date(dividend_date, expected_date):
-    """Test dividend date parsing."""
-    assert YahooFinanceSensor.parse_dividend_date(dividend_date) == expected_date
+def test_convert_timestamp_to_datetime(epoch_date,return_format,expected_datetime):
+    """Test converting Epoch times to datetime and return date or datetime based on return format."""
+    assert YahooFinanceSensor.convert_timestamp_to_datetime(epoch_date,return_format) == expected_datetime
