@@ -179,7 +179,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         date_timestamp = convert_to_float(date_timestamp)
         if date_timestamp is None or date_timestamp == 0:
-            return 0
+            return date_timestamp
 
         converted_date = datetime.fromtimestamp(date_timestamp,tz=dt_util.DEFAULT_TIME_ZONE)
         if return_format == "date":
