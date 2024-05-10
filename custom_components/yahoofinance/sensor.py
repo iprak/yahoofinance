@@ -5,7 +5,7 @@ https://github.com/iprak/yahoofinance
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, time
+from datetime import date, datetime, timedelta
 import logging
 
 from homeassistant.components.sensor import (
@@ -26,8 +26,8 @@ from .const import (
     ATTR_CURRENCY_SYMBOL,
     ATTR_DIVIDEND_DATE,
     ATTR_MARKET_STATE,
-    ATTR_PRE_MARKET_TIME,
     ATTR_POST_MARKET_TIME,
+    ATTR_PRE_MARKET_TIME,
     ATTR_QUOTE_SOURCE_NAME,
     ATTR_QUOTE_TYPE,
     ATTR_REGULAR_MARKET_TIME,
@@ -42,8 +42,8 @@ from .const import (
     DATA_DIVIDEND_DATE,
     DATA_FINANCIAL_CURRENCY,
     DATA_MARKET_STATE,
-    DATA_PRE_MARKET_TIME,
     DATA_POST_MARKET_TIME,
+    DATA_PRE_MARKET_TIME,
     DATA_QUOTE_SOURCE_NAME,
     DATA_QUOTE_TYPE,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
@@ -172,7 +172,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         if conversion is None:
             return value
         return value * conversion
-    
+
     @staticmethod
     def convert_timestamp_to_datetime(date_timestamp, return_format) -> str | None:
         """Convert Epoch JSON element to datetime."""
@@ -184,7 +184,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         converted_date = datetime.fromtimestamp(date_timestamp,tz=dt_util.DEFAULT_TIME_ZONE)
         if return_format == "date":
             converted_date = converted_date.date()
-        
+
         return converted_date.isoformat()
 
     @property
@@ -380,15 +380,15 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._attr_extra_state_attributes[
             ATTR_DIVIDEND_DATE
         ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_DIVIDEND_DATE),'date')
-        
+
         self._attr_extra_state_attributes[
             ATTR_REGULAR_MARKET_TIME
         ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_REGULAR_MARKET_TIME),'dateTime')
-        
+
         self._attr_extra_state_attributes[
             ATTR_POST_MARKET_TIME
         ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_POST_MARKET_TIME),'dateTime')
-        
+
         self._attr_extra_state_attributes[
             ATTR_PRE_MARKET_TIME
         ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_PRE_MARKET_TIME),'dateTime')

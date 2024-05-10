@@ -77,7 +77,7 @@ async def test_invalid_global_scan_interval(
 
 
 @pytest.mark.parametrize(
-    "domain_config, expected_partial_config",
+    ("domain_config", "expected_partial_config"),
     [
         (
             # Simple format - no scan_interval defaults to DEFAULT_SCAN_INTERVAL
@@ -249,7 +249,7 @@ async def test_refresh_symbols_service(
 
 
 @pytest.mark.parametrize(
-    "sym1,sym2,expected",
+    ("sym1", "sym2", "expected"),
     [
         (SymbolDefinition("ABC"), SymbolDefinition("ABC"), True),  # Same symbol
         (SymbolDefinition("ABC"), SymbolDefinition("DEF"), False),  # Different symbol
@@ -295,7 +295,7 @@ def test_symbol_definition_comparison(
 
 
 @pytest.mark.parametrize(
-    "value, expected",
+    ("value", "expected"),
     [
         (None, None),
         (1642118400, 1642118400),

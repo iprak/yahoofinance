@@ -1,4 +1,5 @@
 """Tests for Yahoo Finance component."""
+
 import json
 import os
 from unittest.mock import AsyncMock
@@ -11,7 +12,8 @@ from custom_components.yahoofinance.coordinator import (
     YahooSymbolUpdateCoordinator,
 )
 from homeassistant.core import HomeAssistant
-from tests import TEST_CRUMB, TEST_SYMBOL
+
+from . import TEST_CRUMB, TEST_SYMBOL
 
 
 def load_json(filename):
@@ -21,7 +23,9 @@ def load_json(filename):
         return fptr.read()
 
 
-def create_mock_coordinator(hass: HomeAssistant, crumb_coordinator: CrumbCoordinator) -> YahooSymbolUpdateCoordinator:
+def create_mock_coordinator(
+    hass: HomeAssistant, crumb_coordinator: CrumbCoordinator
+) -> YahooSymbolUpdateCoordinator:
     """Create a test Coordinator."""
 
     coordinator = YahooSymbolUpdateCoordinator(
@@ -35,7 +39,7 @@ def create_mock_coordinator(hass: HomeAssistant, crumb_coordinator: CrumbCoordin
 @pytest.fixture
 def mock_json():
     """Return sample JSON data."""
-    yield json.loads(load_json("yahoofinance.json"))
+    return json.loads(load_json("yahoofinance.json"))
 
 
 @pytest.fixture(name="mocked_crumb_coordinator")

@@ -1,4 +1,5 @@
 """Tests for Yahoo Finance component."""
+
 import copy
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
@@ -21,10 +22,10 @@ from custom_components.yahoofinance.const import (
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
     DATA_DIVIDEND_DATE,
+    DATA_POST_MARKET_TIME,
+    DATA_PRE_MARKET_TIME,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
-    DATA_PRE_MARKET_TIME,
-    DATA_POST_MARKET_TIME,
     DATA_REGULAR_MARKET_TIME,
     DATA_SHORT_NAME,
     DEFAULT_CONF_DECIMAL_PLACES,
@@ -77,13 +78,11 @@ def build_mock_symbol_data(
 
 def build_mock_coordinator(hass, last_update_success, symbol, market_price):
     """Build a mock data coordinator."""
-    coordinator = Mock(
+    return Mock(
         data={symbol: build_mock_symbol_data(symbol, market_price)},
         hass=hass,
         last_update_success=last_update_success,
     )
-
-    return coordinator
 
 
 def build_mock_coordinator_for_conversion(
@@ -92,7 +91,7 @@ def build_mock_coordinator_for_conversion(
     """Build a mock data coordinator with conversion data."""
 
     target_symbol = f"{currency}{target_currency}=X"
-    coordinator = Mock(
+    return Mock(
         data={
             symbol: build_mock_symbol_data(symbol, market_price),
             target_symbol: build_mock_symbol_data(
@@ -103,15 +102,13 @@ def build_mock_coordinator_for_conversion(
         last_update_success=True,
     )
 
-    return coordinator
-
 
 def install_coordinator(hass, coordinator) -> None:
     """Install the coordinator into HASS_DATA_COORDINATORS store."""
     hass.data[DOMAIN] = {HASS_DATA_COORDINATORS: {DEFAULT_SCAN_INTERVAL: coordinator}}
 
 
-async def test_setup_platform(hass):
+async def test_setup_platform(hass) -> None:
     """Test platform setup."""
 
     async_add_entities = MagicMock()
@@ -135,12 +132,12 @@ async def test_setup_platform(hass):
 
 
 @pytest.mark.parametrize(
-    "last_update_success,symbol,market_price,expected_market_price",
+    ("last_update_success", "symbol", "market_price", "expected_market_price"),
     [(True, "XYZ", 12, 12), (False, "^ABC", 0.1221, 0.12), (True, "BOB", 6.156, 6.16)],
 )
 def test_sensor_creation(
     hass, last_update_success, symbol, market_price, expected_market_price
-):
+) -> None:
     """Test sensor status based on the expected_market_price."""
 
     mock_coordinator = build_mock_coordinator(
@@ -168,9 +165,15 @@ def test_sensor_creation(
     for data_group in NUMERIC_DATA_GROUPS.values():
         for value in data_group:
             key = value[0]
-            if (key != DATA_REGULAR_MARKET_PRICE) and (key != DATA_DIVIDEND_DATE) and (key != DATA_REGULAR_MARKET_TIME) and (key != DATA_PRE_MARKET_TIME) and (key != DATA_POST_MARKET_TIME):   # noqa: PLR1714
+            if (
+                (key != DATA_REGULAR_MARKET_PRICE)
+                and (key != DATA_DIVIDEND_DATE)
+                and (key != DATA_REGULAR_MARKET_TIME)
+                and (key != DATA_PRE_MARKET_TIME)
+                and (key != DATA_POST_MARKET_TIME)
+            ):  # noqa: PLR1714
                 assert attributes[key] == 0
-   
+
     # Since we did not provide any data so currency should be the default value
     assert sensor.unit_of_measurement == DEFAULT_CURRENCY
     assert attributes[ATTR_CURRENCY_SYMBOL] == DEFAULT_CURRENCY_SYMBOL
@@ -179,7 +182,7 @@ def test_sensor_creation(
 
 
 @pytest.mark.parametrize(
-    "market_price, decimal_places, expected_market_price",
+    ("market_price", "decimal_places", "expected_market_price"),
     [
         (12.12645, 2, 12.13),
         (12.12345, 1, 12.1),
@@ -189,7 +192,7 @@ def test_sensor_creation(
 )
 def test_sensor_decimal_placs(
     hass, market_price, decimal_places, expected_market_price
-):
+) -> None:
     """Tests numeric value rounding."""
 
     symbol = "XYZ"
@@ -210,10 +213,12 @@ def test_sensor_decimal_placs(
     assert sensor.state == expected_market_price
 
 
-@pytest.mark.parametrize("last_update_success,symbol,market_price", [(True, "XYZ", 12)])
+@pytest.mark.parametrize(
+    ("last_update_success", "symbol", "market_price"), [(True, "XYZ", 12)]
+)
 def test_sensor_data_when_coordinator_is_missing_symbol_data(
     hass, last_update_success, symbol, market_price
-):
+) -> None:
     """Test sensor status when data coordinator does not have data for that symbol."""
 
     mock_coordinator = build_mock_coordinator(
@@ -238,7 +243,7 @@ def test_sensor_data_when_coordinator_is_missing_symbol_data(
     assert sensor.name == symbol_to_test
 
 
-def test_sensor_data_when_coordinator_returns_none(hass):
+def test_sensor_data_when_coordinator_returns_none(hass) -> None:
     """Test sensor status when data coordinator does not have any data."""
 
     symbol = "XYZ"
@@ -261,7 +266,7 @@ def test_sensor_data_when_coordinator_returns_none(hass):
     assert sensor.name == symbol
 
 
-async def test_sensor_update_calls_coordinator(hass):
+async def test_sensor_update_calls_coordinator(hass) -> None:
     """Test sensor data update."""
 
     symbol = "XYZ"
@@ -276,7 +281,7 @@ async def test_sensor_update_calls_coordinator(hass):
 
 
 @pytest.mark.parametrize(
-    "market_price,previous_close,show_trending,expected_trend",
+    ("market_price", "previous_close", "show_trending", "expected_trend"),
     [
         (12, 12, False, "neutral"),
         (12, 12.1, False, "down"),
@@ -288,7 +293,7 @@ async def test_sensor_update_calls_coordinator(hass):
 )
 def test_sensor_trend(
     hass, market_price, previous_close, show_trending, expected_trend
-):
+) -> None:
     """Test sensor trending status."""
 
     symbol = "XYZ"
@@ -317,7 +322,9 @@ def test_sensor_trend(
         assert sensor.icon == f"mdi:currency-{lower_currency}"
 
 
-def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(hass):
+def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(
+    hass,
+) -> None:
     """The trending state is None if _previous_close is None for some reason."""
 
     symbol = "XYZ"
@@ -346,7 +353,7 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(hass)
     assert sensor.icon == f"mdi:currency-{lower_currency}"
 
 
-async def test_data_from_json(hass, mock_json, mocked_crumb_coordinator):
+async def test_data_from_json(hass, mock_json, mocked_crumb_coordinator) -> None:
     """Tests data update all the way from from json."""
     symbol = TEST_SYMBOL
     coordinator = YahooSymbolUpdateCoordinator(
@@ -373,15 +380,15 @@ async def test_data_from_json(hass, mock_json, mocked_crumb_coordinator):
 
 
 @pytest.mark.parametrize(
-    "value,conversion,expected",
+    ("value", "conversion", "expected"),
     [(123.5, 1, 123.5), (None, 1, None), (123.5, None, 123.5)],
 )
-def test_safe_convert(value, conversion, expected):
+def test_safe_convert(value, conversion, expected) -> None:
     """Test value conversion."""
     assert YahooFinanceSensor.safe_convert(value, conversion) == expected
 
 
-def test_conversion(hass):
+def test_conversion(hass) -> None:
     """Numeric values get multiplied based on conversion currency."""
 
     symbol = "XYZ"
@@ -406,7 +413,7 @@ def test_conversion(hass):
     assert sensor.state == (12 * 1.5)
 
 
-def test_conversion_requests_additional_data_from_coordinator(hass):
+def test_conversion_requests_additional_data_from_coordinator(hass) -> None:
     """Numeric values get multiplied based on conversion currency."""
 
     symbol = "XYZ"
@@ -432,7 +439,7 @@ def test_conversion_requests_additional_data_from_coordinator(hass):
         assert mock_add_symbol.call_count == 1
 
 
-def test_conversion_not_attempted_if_target_currency_same(hass):
+def test_conversion_not_attempted_if_target_currency_same(hass) -> None:
     """No conversion is attempted if target curency is the same as symbol currency."""
 
     symbol = "XYZ"
@@ -458,21 +465,26 @@ def test_conversion_not_attempted_if_target_currency_same(hass):
 
 
 @pytest.mark.parametrize(
-    "epoch_date,return_format,expected_datetime",
+    ("epoch_date", "return_format", "expected_datetime"),
     [
         (None, "date", None),
-        (1642118400, "date","2022-01-14"),
-        (1646870400, "date","2022-03-10"),
-        ("1646870400", "date","2022-03-10"),
-        ("164687040 0", "date",None),
-        (1642118453, "datetime","2022-01-14T00:00:53+00:00"),
-        (1646878750, "datetime","2022-03-10T02:19:10+00:00"),
-        ("1646878750", "datetime","2022-03-10T02:19:10+00:00"),
-        ("164687040 0", "datetime",None),
-        (0, "date",0),
-        (0, "datetime",0),
+        (1642118400, "date", "2022-01-14"),
+        (1646870400, "date", "2022-03-10"),
+        ("1646870400", "date", "2022-03-10"),
+        ("164687040 0", "date", None),
+        (1642118453, "datetime", "2022-01-14T00:00:53+00:00"),
+        (1646878750, "datetime", "2022-03-10T02:19:10+00:00"),
+        ("1646878750", "datetime", "2022-03-10T02:19:10+00:00"),
+        ("164687040 0", "datetime", None),
+        (0, "date", 0),
+        (0, "datetime", 0),
     ],
 )
-def test_convert_timestamp_to_datetime(epoch_date,return_format,expected_datetime):
+def test_convert_timestamp_to_datetime(
+    epoch_date, return_format, expected_datetime
+) -> None:
     """Test converting Epoch times to datetime and return date or datetime based on return format."""
-    assert YahooFinanceSensor.convert_timestamp_to_datetime(epoch_date,return_format) == expected_datetime
+    assert (
+        YahooFinanceSensor.convert_timestamp_to_datetime(epoch_date, return_format)
+        == expected_datetime
+    )
