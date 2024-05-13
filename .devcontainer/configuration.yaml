@@ -22,6 +22,7 @@ yahoofinance:
   scan_interval: 30
 
   symbols:
+    - symbol: "ISTNX"
     - symbol: GBPUSD=X
       no_unit: true
     - symbol: IDFCBANK.BO

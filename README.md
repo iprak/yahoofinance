@@ -22,26 +22,29 @@ yahoofinance:
 The above configuration will generate an entity with the id `sensor.yahoofinance_istnx` and current value as the state along with these attributes:
 
 ```
+state_class: measurement
 attribution: Data provided by Yahoo Finance
 currencySymbol: $
 symbol: ISTNX
 quoteType: MUTUALFUND
 quoteSourceName: Delayed Quote
-marketState: CLOSED
+marketState: PRE
 averageDailyVolume10Day: 0
 averageDailyVolume3Month: 0
-regularMarketChange: 0.26
-regularMarketChangePercent: 0.23
+regularMarketChange: 0.35
+regularMarketChangePercent: 0.5
 regularMarketDayHigh: 0
 regularMarketDayLow: 0
-regularMarketPreviousClose: 12.63
-regularMarketPrice: 12.89
+regularMarketPreviousClose: 69.93
+regularMarketPrice: 70.28
 regularMarketVolume: 0
-regularMarketTime: 1618617625
-dividendDate: 2021-11-11
-fiftyDayAverage: 107.54
-fiftyDayAverageChange: 5.35
-fiftyDayAverageChangePercent: 0.05
+regularMarketTime: 2024-05-10T19:00:27-05:00
+dividendDate: null
+forwardPE: 0
+trailingPE: 0
+fiftyDayAverage: 69.79
+fiftyDayAverageChange: 0.49
+fiftyDayAverageChangePercent: 0.7
 preMarketChange: 0
 preMarketChangePercent: 0
 preMarketTime: 0
@@ -50,22 +53,26 @@ postMarketChange: 0
 postMarketChangePercent: 0
 postMarketPrice: 0
 postMarketTime: 0
-twoHundredDayAverage: 14.69
-twoHundredDayAverageChange: 8.2
-twoHundredDayAverageChangePercent: 0.08
-fiftyTwoWeekLow: 125
-fiftyTwoWeekLowChange: 20.37
-fiftyTwoWeekLowChangePercent: 16.29
-fiftyTwoWeekHigh: 153.1
-fiftyTwoWeekHighChange: -7.74
-fiftyTwoWeekHighChangePercent: -5.05
+twoHundredDayAverage: 62.94
+twoHundredDayAverageChange: 7.34
+twoHundredDayAverageChangePercent: 11.67
+fiftyTwoWeekLow: 53.81
+fiftyTwoWeekLowChange: 16.47
+fiftyTwoWeekLowChangePercent: 30.61
+fiftyTwoWeekHigh: 72.44
+fiftyTwoWeekHighChange: -2.16
+fiftyTwoWeekHighChangePercent: -2.98
 trending: up
 unit_of_measurement: USD
-friendly_name: Ivy Science & Technology Fund C
 icon: mdi:trending-up
+friendly_name: Ivy Science & Technology Fund C
 ```
 
-The `dividendDate` is in ISO format (YYYY-MM-DD) and can be `null`.
+### Attributes
+* The attributes can be null if there is no data present.
+* The `dividendDate` is in ISO format (YYYY-MM-DD).
+
+
 
 ## Optional Configuration
 
