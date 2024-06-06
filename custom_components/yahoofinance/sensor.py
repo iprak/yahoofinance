@@ -181,7 +181,9 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         if date_timestamp is None or date_timestamp == 0:
             return date_timestamp
 
-        converted_date = datetime.fromtimestamp(date_timestamp,tz=dt_util.DEFAULT_TIME_ZONE)
+        converted_date = datetime.fromtimestamp(
+            date_timestamp, tz=dt_util.DEFAULT_TIME_ZONE
+        )
         if return_format == "date":
             converted_date = converted_date.date()
 
@@ -377,21 +379,29 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
             DATA_MARKET_STATE
         ]
 
-        self._attr_extra_state_attributes[
-            ATTR_DIVIDEND_DATE
-        ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_DIVIDEND_DATE),'date')
+        self._attr_extra_state_attributes[ATTR_DIVIDEND_DATE] = (
+            self.convert_timestamp_to_datetime(
+                symbol_data.get(DATA_DIVIDEND_DATE), "date"
+            )
+        )
 
-        self._attr_extra_state_attributes[
-            ATTR_REGULAR_MARKET_TIME
-        ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_REGULAR_MARKET_TIME),'dateTime')
+        self._attr_extra_state_attributes[ATTR_REGULAR_MARKET_TIME] = (
+            self.convert_timestamp_to_datetime(
+                symbol_data.get(DATA_REGULAR_MARKET_TIME), "dateTime"
+            )
+        )
 
-        self._attr_extra_state_attributes[
-            ATTR_POST_MARKET_TIME
-        ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_POST_MARKET_TIME),'dateTime')
+        self._attr_extra_state_attributes[ATTR_POST_MARKET_TIME] = (
+            self.convert_timestamp_to_datetime(
+                symbol_data.get(DATA_POST_MARKET_TIME), "dateTime"
+            )
+        )
 
-        self._attr_extra_state_attributes[
-            ATTR_PRE_MARKET_TIME
-        ] = self.convert_timestamp_to_datetime(symbol_data.get(DATA_PRE_MARKET_TIME),'dateTime')
+        self._attr_extra_state_attributes[ATTR_PRE_MARKET_TIME] = (
+            self.convert_timestamp_to_datetime(
+                symbol_data.get(DATA_PRE_MARKET_TIME), "dateTime"
+            )
+        )
 
         # Use target_currency if we have conversion data. Otherwise keep using the
         # currency from data.
