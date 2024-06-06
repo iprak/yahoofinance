@@ -12,6 +12,7 @@ logger:
 
 yahoofinance:
   show_trending_icon: true
+  show_currency_symbol_as_unit: true
 
   #Interval too small - will throw an error
   #scan_interval: 30

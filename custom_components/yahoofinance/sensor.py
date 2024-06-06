@@ -35,6 +35,7 @@ from .const import (
     ATTR_TRENDING,
     ATTRIBUTION,
     CONF_DECIMAL_PLACES,
+    CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CURRENCY_CODES,
@@ -124,6 +125,9 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         symbol = symbol_definition.symbol
         self._symbol = symbol
         self._show_trending_icon = domain_config[CONF_SHOW_TRENDING_ICON]
+        self._show_currency_symbol_as_unit = domain_config[
+            CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT
+        ]
         self._decimal_places = domain_config[CONF_DECIMAL_PLACES]
         self._previous_close = None
         self._target_currency = symbol_definition.target_currency
@@ -213,9 +217,12 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         if self._no_unit:
             return None
 
-        if self._target_currency:
-            return self._target_currency
-        return self._currency
+        currency = self._target_currency if self._target_currency else self._currency
+
+        if self._show_currency_symbol_as_unit:
+            return CURRENCY_CODES.get(currency.lower(), currency)
+
+        return currency
 
     @property
     def icon(self) -> str:

@@ -25,6 +25,7 @@ from .const import (
     CONF_INCLUDE_PRE_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_NO_UNIT,
+    CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CONF_TARGET_CURRENCY,
@@ -35,6 +36,7 @@ from .const import (
     DEFAULT_CONF_INCLUDE_PRE_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_NO_UNIT,
+    DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -87,6 +89,10 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_TARGET_CURRENCY): vol.All(cv.string, vol.Upper),
                 vol.Optional(
                     CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
+                ): cv.boolean,
+                vol.Optional(
+                    CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+                    default=DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
                 ): cv.boolean,
                 vol.Optional(
                     CONF_DECIMAL_PLACES, default=DEFAULT_CONF_DECIMAL_PLACES
