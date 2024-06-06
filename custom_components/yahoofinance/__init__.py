@@ -134,12 +134,12 @@ class SymbolDefinition:
         """
         self.symbol = symbol
 
-        if "target_currency" in kwargs:
-            self.target_currency = kwargs["target_currency"]
-        if "scan_interval" in kwargs:
-            self.scan_interval = kwargs["scan_interval"]
-        if "no_unit" in kwargs:
-            self.no_unit = kwargs["no_unit"]
+        if CONF_TARGET_CURRENCY in kwargs:
+            self.target_currency = kwargs[CONF_TARGET_CURRENCY]
+        if CONF_SCAN_INTERVAL in kwargs:
+            self.scan_interval = kwargs[CONF_SCAN_INTERVAL]
+        if CONF_NO_UNIT in kwargs:
+            self.no_unit = kwargs[CONF_NO_UNIT]
 
     def __repr__(self) -> str:
         """Return the representation."""
