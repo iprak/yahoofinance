@@ -46,7 +46,9 @@ from custom_components.yahoofinance.sensor import (
     async_setup_platform,
 )
 from homeassistant.const import CONF_SCAN_INTERVAL
-from tests import TEST_SYMBOL
+from homeassistant.core import HomeAssistant
+
+from . import TEST_SYMBOL
 
 DEFAULT_OPTIONAL_CONFIG = {
     CONF_DECIMAL_PLACES: DEFAULT_CONF_DECIMAL_PLACES,
@@ -76,7 +78,9 @@ def build_mock_symbol_data(
     return YahooSymbolUpdateCoordinator.parse_symbol_data(source_data)
 
 
-def build_mock_coordinator(hass, last_update_success, symbol, market_price):
+def build_mock_coordinator(
+    hass: HomeAssistant, last_update_success, symbol, market_price
+):
     """Build a mock data coordinator."""
     return Mock(
         data={symbol: build_mock_symbol_data(symbol, market_price)},
@@ -86,7 +90,12 @@ def build_mock_coordinator(hass, last_update_success, symbol, market_price):
 
 
 def build_mock_coordinator_for_conversion(
-    hass, symbol, market_price, currency, target_currency, target_market_price
+    hass: HomeAssistant,
+    symbol,
+    market_price,
+    currency,
+    target_currency,
+    target_market_price,
 ):
     """Build a mock data coordinator with conversion data."""
 
@@ -103,12 +112,12 @@ def build_mock_coordinator_for_conversion(
     )
 
 
-def install_coordinator(hass, coordinator) -> None:
+def install_coordinator(hass: HomeAssistant, coordinator) -> None:
     """Install the coordinator into HASS_DATA_COORDINATORS store."""
     hass.data[DOMAIN] = {HASS_DATA_COORDINATORS: {DEFAULT_SCAN_INTERVAL: coordinator}}
 
 
-async def test_setup_platform(hass) -> None:
+async def test_setup_platform(hass: HomeAssistant) -> None:
     """Test platform setup."""
 
     async_add_entities = MagicMock()
@@ -136,7 +145,11 @@ async def test_setup_platform(hass) -> None:
     [(True, "XYZ", 12, 12), (False, "^ABC", 0.1221, 0.12), (True, "BOB", 6.156, 6.16)],
 )
 def test_sensor_creation(
-    hass, last_update_success, symbol, market_price, expected_market_price
+    hass: HomeAssistant,
+    last_update_success,
+    symbol,
+    market_price,
+    expected_market_price,
 ) -> None:
     """Test sensor status based on the expected_market_price."""
 
@@ -166,12 +179,12 @@ def test_sensor_creation(
         for value in data_group:
             key = value[0]
             if (
-                (key != DATA_REGULAR_MARKET_PRICE)
+                (key != DATA_REGULAR_MARKET_PRICE)  # noqa: PLR1714
                 and (key != DATA_DIVIDEND_DATE)
                 and (key != DATA_REGULAR_MARKET_TIME)
                 and (key != DATA_PRE_MARKET_TIME)
                 and (key != DATA_POST_MARKET_TIME)
-            ):  # noqa: PLR1714
+            ):
                 assert attributes[key] == 0
 
     # Since we did not provide any data so currency should be the default value
@@ -191,7 +204,7 @@ def test_sensor_creation(
     ],
 )
 def test_sensor_decimal_placs(
-    hass, market_price, decimal_places, expected_market_price
+    hass: HomeAssistant, market_price, decimal_places, expected_market_price
 ) -> None:
     """Tests numeric value rounding."""
 
@@ -217,7 +230,7 @@ def test_sensor_decimal_placs(
     ("last_update_success", "symbol", "market_price"), [(True, "XYZ", 12)]
 )
 def test_sensor_data_when_coordinator_is_missing_symbol_data(
-    hass, last_update_success, symbol, market_price
+    hass: HomeAssistant, last_update_success, symbol, market_price
 ) -> None:
     """Test sensor status when data coordinator does not have data for that symbol."""
 
@@ -243,7 +256,7 @@ def test_sensor_data_when_coordinator_is_missing_symbol_data(
     assert sensor.name == symbol_to_test
 
 
-def test_sensor_data_when_coordinator_returns_none(hass) -> None:
+def test_sensor_data_when_coordinator_returns_none(hass: HomeAssistant) -> None:
     """Test sensor status when data coordinator does not have any data."""
 
     symbol = "XYZ"
@@ -266,7 +279,7 @@ def test_sensor_data_when_coordinator_returns_none(hass) -> None:
     assert sensor.name == symbol
 
 
-async def test_sensor_update_calls_coordinator(hass) -> None:
+async def test_sensor_update_calls_coordinator(hass: HomeAssistant) -> None:
     """Test sensor data update."""
 
     symbol = "XYZ"
@@ -292,7 +305,7 @@ async def test_sensor_update_calls_coordinator(hass) -> None:
     ],
 )
 def test_sensor_trend(
-    hass, market_price, previous_close, show_trending, expected_trend
+    hass: HomeAssistant, market_price, previous_close, show_trending, expected_trend
 ) -> None:
     """Test sensor trending status."""
 
@@ -323,7 +336,7 @@ def test_sensor_trend(
 
 
 def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(
-    hass,
+    hass: HomeAssistant,
 ) -> None:
     """The trending state is None if _previous_close is None for some reason."""
 
@@ -353,7 +366,9 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(
     assert sensor.icon == f"mdi:currency-{lower_currency}"
 
 
-async def test_data_from_json(hass, mock_json, mocked_crumb_coordinator) -> None:
+async def test_data_from_json(
+    hass: HomeAssistant, mock_json, mocked_crumb_coordinator
+) -> None:
     """Tests data update all the way from from json."""
     symbol = TEST_SYMBOL
     coordinator = YahooSymbolUpdateCoordinator(
@@ -388,7 +403,7 @@ def test_safe_convert(value, conversion, expected) -> None:
     assert YahooFinanceSensor.safe_convert(value, conversion) == expected
 
 
-def test_conversion(hass) -> None:
+def test_conversion(hass: HomeAssistant) -> None:
     """Numeric values get multiplied based on conversion currency."""
 
     symbol = "XYZ"
@@ -413,7 +428,9 @@ def test_conversion(hass) -> None:
     assert sensor.state == (12 * 1.5)
 
 
-def test_conversion_requests_additional_data_from_coordinator(hass) -> None:
+def test_conversion_requests_additional_data_from_coordinator(
+    hass: HomeAssistant,
+) -> None:
     """Numeric values get multiplied based on conversion currency."""
 
     symbol = "XYZ"
@@ -439,7 +456,7 @@ def test_conversion_requests_additional_data_from_coordinator(hass) -> None:
         assert mock_add_symbol.call_count == 1
 
 
-def test_conversion_not_attempted_if_target_currency_same(hass) -> None:
+def test_conversion_not_attempted_if_target_currency_same(hass: HomeAssistant) -> None:
     """No conversion is attempted if target curency is the same as symbol currency."""
 
     symbol = "XYZ"
