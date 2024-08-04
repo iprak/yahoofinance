@@ -1,14 +1,18 @@
-# Summary
+![GitHub Release](https://img.shields.io/github/v/release/iprak/yahoofinance)
+[![License](https://img.shields.io/packagist/l/phplicengine/bitly)](https://packagist.org/packages/phplicengine/bitly)
+<a href="https://buymeacoffee.com/leolite1q" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" height="20px"></a>
+
+## Summary
 
 A custom component to display stock information from [Yahoo finance](https://finance.yahoo.com/).
 
 Currency details can be presented in an different currency than what is reported (`target_currency`). Data is downloaded at regular intervals (`scan_interval`) but a retry is attempted after 20 seconds in case of failure.
 
-# Installation
+## Installation
 
 This can be installed through [HACS](https://hacs.xyz/) or by copying all the files from `custom_components/yahoofinance/` to `<config directory>/custom_components/yahoofinance/`.
 
-# Configuration
+## Configuration
 
 Define the symbols to be tracked and optional parameters in `configuration.yaml`.
 
@@ -68,7 +72,7 @@ icon: mdi:trending-up
 friendly_name: Ivy Science & Technology Fund C
 ```
 
-### Attributes
+#### Attributes
 * The attributes can be null if there is no data present.
 * The `dividendDate` is in ISO format (YYYY-MM-DD).
 
@@ -195,11 +199,11 @@ yahoofinance:
                                         {% endif %};
   ```
 
-# Services
+## Services
 
 The component exposes the service `yahoofinance.refresh_symbols` which can be used to refresh all the data.
 
-# Breaking Changes
+## Breaking Changes
 
 - As of version [1.2.5](https://github.com/iprak/yahoofinance/releases/), `scan_interval` can be `manual` to suppress automatic update.
 
