@@ -2,6 +2,7 @@
 
 https://github.com/iprak/yahoofinance
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -39,7 +40,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-WEBSESSION_TIMEOUT: Final = 15
+REQUEST_TIMEOUT: Final = 10
 DELAY_ASYNC_REQUEST_REFRESH: Final = 5
 FAILURE_ASYNC_REQUEST_REFRESH: Final = 20
 
@@ -76,81 +77,117 @@ class CrumbCoordinator:
     async def try_get_crumb_cookies(self) -> str | None:
         """Try to get crumb and cookies for data requests."""
 
-        websession = async_get_clientsession(self._hass)
+        result = await self.need_consent()
+        if result is None:  # Consent check failed
+            return None
 
-        if self.cookies_missing():
-            _LOGGER.debug("Navigating to base Yahoo page")
+        if result:  # Consent is needed
+            if not await self.process_consent(result):
+                return None
 
-            try:
-                async with asyncio.timeout(WEBSESSION_TIMEOUT):
-                    # Websession.get handles redirects by default
-                    response = await websession.get(
-                        INITIAL_URL, headers=INITIAL_REQUEST_HEADERS
-                    )
-                    self.cookies = response.cookies
-
-                    _LOGGER.debug("Response %d, URL: %s", response.status, response.url)
-                    _LOGGER.debug("Cookies: %s", str(self.cookies))
-
-                    if (response.status == HTTPStatus.OK) and (
-                        response.url.host.lower() == CONSENT_HOST
-                    ):
-                        _LOGGER.debug("Consent page detected")
-                        content = await response.text()
-                        form_data = self.build_consent_form_data(content)
-                        _LOGGER.debug("Posting consent %s", str(form_data))
-                        response = await websession.post(response.url, data=form_data)
-
-                        if response.status != HTTPStatus.OK:
-                            _LOGGER.info(
-                                "Consent post responded with %d", response.status
-                            )
-                            return
-
-                        _LOGGER.debug(
-                            "Consent post response %d, URL: %s",
-                            response.status,
-                            response.url,
-                        )
-                        # content = await response.text()
-                        # await self.parse_crumb_from_content(content)
-                        # _LOGGER.debug("Crumb: %s", self.crumb)
-
-            except asyncio.TimeoutError as ex:
-                _LOGGER.error("Timed out getting crumb. %s", ex)
-            except aiohttp.ClientError as ex:
-                _LOGGER.error("Error accessing crumb url. %s", ex)
-
-        # Try another crumb page even if the consent response provided a crumb.
-        if not self.cookies_missing():
-            await self.try_crumb_page(websession)
-            _LOGGER.debug("Crumb: %s", self.crumb)
-
+        await self.try_crumb_page()
         return self.crumb
+
+    async def need_consent(self) -> bool | dict[str, str]:
+        """Check if consent is needed."""
+
+        websession = async_get_clientsession(self._hass)
+        _LOGGER.debug("Navigating to base Yahoo page")
+
+        try:
+            async with websession.get(
+                INITIAL_URL,
+                headers=INITIAL_REQUEST_HEADERS,
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
+            ) as response:
+                _LOGGER.debug("Response %d, URL: %s", response.status, response.url)
+
+                if response.status != HTTPStatus.OK:
+                    _LOGGER.error("Failed to access initial url %d", response.status)
+                    return None
+
+                # This request might not return any cookies if consent is needed
+                self.cookies = response.cookies
+
+                # https://guce.yahoo.com/consent?brandType=nonEu&gcrumb=eZ_Jbm0&done=https%3A%2F%2Ffinance.yahoo.com%2F
+                if response.url.host.lower() == CONSENT_HOST:
+                    _LOGGER.debug("Consent page detected")
+                    return {"content": await response.text(), "url": response.url}
+
+                _LOGGER.debug("Have cookies=%s", not self.cookies_missing())
+
+        except asyncio.TimeoutError as ex:
+            _LOGGER.error("Timed out accessing initial url. %s", ex)
+        except aiohttp.ClientError as ex:
+            _LOGGER.error("Error accessing initial url. %s", ex)
+
+        return False
+
+    async def process_consent(self, previous_response) -> bool:
+        """Process GDPR consent."""
+
+        websession = async_get_clientsession(self._hass)
+        form_data = self.build_consent_form_data(previous_response["content"])
+        _LOGGER.debug("Posting consent %s", str(form_data))
+
+        try:
+            async with asyncio.timeout(REQUEST_TIMEOUT):
+                response = await websession.post(
+                    previous_response["url"],
+                    data=form_data,
+                    headers=INITIAL_REQUEST_HEADERS,
+                )
+
+                # Sample responses
+                # 302 https://guce.yahoo.com/copyConsent?sessionId=3_cc-session_0d6c4281-76f7-44ce-8783-6db9d4f39c40&lang=nb-NO
+                # 302 https://finance.yahoo.com/?guccounter=1
+                # 200
+
+                if response.status != HTTPStatus.OK:
+                    _LOGGER.error("Failed to post consent %d", response.status)
+                    return False
+
+                self.cookies = response.cookies
+                _LOGGER.debug("Have cookies=%s", not self.cookies_missing())
+                return True
+
+        except asyncio.TimeoutError as ex:
+            _LOGGER.error("Timed out processing consent. %s", ex)
+        except aiohttp.ClientError as ex:
+            _LOGGER.error("Error accessing consent url. %s", ex)
+
+        return False
 
     def cookies_missing(self) -> bool:
         """Check if we don't have any cookies."""
         return self.cookies is None or len(self.cookies) == 0
 
-    async def try_crumb_page(self, websession: aiohttp.ClientSession) -> None:
+    async def try_crumb_page(self) -> str | None:
         """Try to get crumb from the end point."""
 
         _LOGGER.debug("Accessing crumb page")
-        response = await websession.get(
+        websession = async_get_clientsession(self._hass)
+
+        async with websession.get(
             GET_CRUMB_URL,
             headers=REQUEST_HEADERS,
-        )
-        _LOGGER.debug("Crumb response status: %d, %s", response.status, response)
+            timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
+        ) as response:
+            _LOGGER.debug("Crumb response status: %d, %s", response.status, response)
 
-        if response.status == HTTPStatus.OK:
-            self.crumb = await response.text()
-            _LOGGER.debug("Crumb page reported %s", self.crumb)
-        elif response.status == 429:
-            # Ideally we would want to use the seconds passed back in the header
-            # for 429 but there seems to be no such value.
-            self.retry_duration = CRUMB_RETRY_DELAY_429
-        else:
-            self.retry_duration = CRUMB_RETRY_DELAY
+            if response.status == HTTPStatus.OK:
+                self.crumb = await response.text()
+                _LOGGER.debug("Crumb page reported %s", self.crumb)
+                return self.crumb
+
+            if response.status == 429:
+                # Ideally we would want to use the seconds passed back in the header
+                # for 429 but there seems to be no such value.
+                self.retry_duration = CRUMB_RETRY_DELAY_429
+            else:
+                self.retry_duration = CRUMB_RETRY_DELAY
+
+            return None
 
     # async def parse_crumb_from_content(self, content: str) -> str:
     #     """Parse and update crumb from response content."""
@@ -347,7 +384,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Requesting data from '%s'", url)
 
         try:
-            async with asyncio.timeout(WEBSESSION_TIMEOUT):
+            async with asyncio.timeout(REQUEST_TIMEOUT):
                 response = await self.websession.get(
                     url, headers=REQUEST_HEADERS, cookies=cookies
                 )
