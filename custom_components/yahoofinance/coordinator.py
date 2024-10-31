@@ -6,6 +6,7 @@ https://github.com/iprak/yahoofinance
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from datetime import timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -77,63 +78,88 @@ class CrumbCoordinator:
     async def try_get_crumb_cookies(self) -> str | None:
         """Try to get crumb and cookies for data requests."""
 
-        result = await self.need_consent()
-        if result is None:  # Consent check failed
+        consent_data = await self.initial_navigation(INITIAL_URL)
+        if consent_data is None:  # Consent check failed
             return None
 
-        if result:  # Consent is needed
-            if not await self.process_consent(result):
+        if consent_data.need_consent:
+            if not await self.process_consent(consent_data):
+                return None
+
+            data = await self.initial_navigation(consent_data.successful_consent_url)
+
+            if data is None:  # Something went bad, we did get consent
+                _LOGGER.error("Post consent navigation failed")
+                return None
+
+            if data.need_consent:
+                _LOGGER.error(
+                    "Yahoo reported needing consent even after we got it once"
+                )
                 return None
 
         await self.try_crumb_page()
         return self.crumb
 
-    async def need_consent(self) -> bool | dict[str, str]:
-        """Check if consent is needed."""
+    async def initial_navigation(self, url: str) -> ConsentData | None:
+        """Navigate to base page. This determines if consent is needed.
+
+        Returns:
+            None if consent check failed or the consent response
+
+        """
 
         websession = async_get_clientsession(self._hass)
-        _LOGGER.debug("Navigating to base Yahoo page")
+        _LOGGER.debug("Navigating to base page %s", url)
 
         try:
             async with websession.get(
-                INITIAL_URL,
+                url,
                 headers=INITIAL_REQUEST_HEADERS,
                 timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
             ) as response:
                 _LOGGER.debug("Response %d, URL: %s", response.status, response.url)
 
                 if response.status != HTTPStatus.OK:
-                    _LOGGER.error("Failed to access initial url %d", response.status)
+                    _LOGGER.error(
+                        "Failed to navigate to %s, status=%d", url, response.status
+                    )
                     return None
 
-                # This request might not return any cookies if consent is needed
-                self.cookies = response.cookies
+                # This request will return cookies only if consent is not needed
+                if response.cookies:
+                    self.cookies = response.cookies
 
                 # https://guce.yahoo.com/consent?brandType=nonEu&gcrumb=eZ_Jbm0&done=https%3A%2F%2Ffinance.yahoo.com%2F
                 if response.url.host.lower() == CONSENT_HOST:
-                    _LOGGER.debug("Consent page detected")
-                    return {"content": await response.text(), "url": response.url}
+                    _LOGGER.info("Consent page %s detected", response.url)
 
-                _LOGGER.debug("Have cookies=%s", not self.cookies_missing())
+                    return ConsentData(
+                        need_consent=True,
+                        consent_content=await response.text(),
+                        consent_post_url=response.url,
+                    )
+
+                _LOGGER.debug("No consent needed, have cookies=%s", bool(self.cookies))
 
         except asyncio.TimeoutError as ex:
             _LOGGER.error("Timed out accessing initial url. %s", ex)
         except aiohttp.ClientError as ex:
             _LOGGER.error("Error accessing initial url. %s", ex)
 
-        return False
+        return ConsentData()
 
-    async def process_consent(self, previous_response) -> bool:
+    async def process_consent(self, consent_data: ConsentData) -> bool:
         """Process GDPR consent."""
 
         websession = async_get_clientsession(self._hass)
-        form_data = self.build_consent_form_data(previous_response["content"])
+        form_data = self.build_consent_form_data(consent_data.consent_content)
         _LOGGER.debug("Posting consent %s", str(form_data))
 
         try:
             async with asyncio.timeout(REQUEST_TIMEOUT):
                 response = await websession.post(
-                    previous_response["url"],
+                    consent_data.consent_post_url,
                     data=form_data,
                     headers=INITIAL_REQUEST_HEADERS,
                 )
@@ -147,8 +173,14 @@ class CrumbCoordinator:
                     _LOGGER.error("Failed to post consent %d", response.status)
                     return False
 
-                self.cookies = response.cookies
-                _LOGGER.debug("Have cookies=%s", not self.cookies_missing())
+                if response.cookies:
+                    self.cookies = response.cookies
+
+                consent_data.successful_consent_url = response.url
+
+                _LOGGER.debug(
+                    "After consent processing, have cookies=%s", bool(self.cookies)
+                )
                 return True
 
         except asyncio.TimeoutError as ex:
@@ -165,7 +197,7 @@ class CrumbCoordinator:
     async def try_crumb_page(self) -> str | None:
         """Try to get crumb from the end point."""
 
-        _LOGGER.debug("Accessing crumb page")
+        _LOGGER.info("Accessing crumb page")
         websession = async_get_clientsession(self._hass)
 
         async with websession.get(
@@ -538,3 +570,17 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             error_encountered = True
 
         return (error_encountered, data)
+
+
+@dataclass
+class ConsentData:
+    """Class for data related to GDPR consent."""
+
+    consent_content: str = ""
+    """Consent verification content"""
+    consent_post_url: str = ""
+    """Url from consent check where data is to be submitted"""
+    successful_consent_url: str = ""
+    """Url to navigate to after successful consent"""
+    need_consent: bool = False
+    """Consent is needed"""
