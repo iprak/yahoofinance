@@ -98,6 +98,9 @@ class CrumbCoordinator:
                 )
                 return None
 
+        if self.cookies_missing():
+            _LOGGER.error("Attempting to get crumb but have no cookies")
+
         await self.try_crumb_page()
         return self.crumb
 
