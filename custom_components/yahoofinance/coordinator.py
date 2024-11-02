@@ -211,6 +211,7 @@ class CrumbCoordinator:
             GET_CRUMB_URL,
             headers=REQUEST_HEADERS,
             timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
+            cookies=self.cookies,
         ) as response:
             _LOGGER.debug("Crumb response status: %d, %s", response.status, response)
 
