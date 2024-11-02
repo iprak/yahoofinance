@@ -8,6 +8,8 @@ A custom component to display stock information from [Yahoo finance](https://fin
 
 Currency details can be presented in an different currency than what is reported (`target_currency`). Data is downloaded at regular intervals (`scan_interval`) but a retry is attempted after 20 seconds in case of failure.
 
+Note: ```This integration will most only work in US mainland. GDPR requirements seems to be causing requests to fail. This is as of release 1.2.12.```
+
 ## Installation
 
 This can be installed through [HACS](https://hacs.xyz/) or by copying all the files from `custom_components/yahoofinance/` to `<config directory>/custom_components/yahoofinance/`.
