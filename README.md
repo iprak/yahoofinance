@@ -147,6 +147,11 @@ friendly_name: Ivy Science & Technology Fund C
   ```
 
 - The `unit_of_measurement` can be suppressed by setting `no_unit: true`. This could be used for index symbols if no currency unit is desired to be displayed.
+
+  ```yaml
+    - symbol: BND
+      no_unit: true
+  ```
   - **Note:** Using this setting will generate a warning like `The unit of sensor.yahoofinance_gspc cannot be converted to the unit of previously compiled statistics (USD). Generation of long term statistics will be suppressed unless the unit changes back to USD or a compatible unit.` You will have to manually resolve it as mentioned in the message otherwise new data might not show in cards.
 
 ## Examples
