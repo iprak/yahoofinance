@@ -65,7 +65,7 @@ class CrumbCoordinator:
         """Crumb retry request delay."""
 
     @staticmethod
-    def getStaticInstance(hass: HomeAssistant) -> CrumbCoordinator:
+    def get_static_instance(hass: HomeAssistant) -> CrumbCoordinator:
         """Return the static CrumbCoordinator instance."""
         if CrumbCoordinator._instance is None:
             CrumbCoordinator._instance = CrumbCoordinator(hass)
@@ -148,7 +148,7 @@ class CrumbCoordinator:
 
                 _LOGGER.debug("No consent needed, have cookies=%s", bool(self.cookies))
 
-        except asyncio.TimeoutError as ex:
+        except TimeoutError as ex:
             _LOGGER.error("Timed out accessing initial url. %s", ex)
         except aiohttp.ClientError as ex:
             _LOGGER.error("Error accessing initial url. %s", ex)
@@ -193,7 +193,7 @@ class CrumbCoordinator:
                 )
                 return True
 
-        except asyncio.TimeoutError as ex:
+        except TimeoutError as ex:
             _LOGGER.error("Timed out processing consent. %s", ex)
         except aiohttp.ClientError as ex:
             _LOGGER.error("Error accessing consent url. %s", ex)
@@ -280,11 +280,9 @@ class CrumbCoordinator:
         """Build consent form data from response content."""
         pattern = r'<input.*?type="hidden".*?name="(.*?)".*?value="(.*?)".*?>'
         matches = re.findall(pattern, content)
-        form_data = {"reject": "reject"}
-        for name, value in matches:
-            form_data[name] = value
-
-        return form_data
+        basic_data = {"reject": "reject"}
+        additional_data = dict(matches)
+        return {**basic_data, **additional_data}
 
 
 class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
@@ -480,7 +478,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
                         result_json,
                     )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.error("Timed out getting data from %s", url)
         except aiohttp.ClientError:
             _LOGGER.error("Error getting data from %s", url)

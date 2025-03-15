@@ -170,9 +170,7 @@ class SymbolDefinition:
         )
 
 
-def normalize_input_symbols(
-    defined_symbols: list,
-) -> tuple[list[str], list[SymbolDefinition]]:
+def normalize_input_symbols(defined_symbols: list) -> list[SymbolDefinition]:
     """Normalize input and remove duplicates."""
     symbols = set()
     symbol_definitions: list[SymbolDefinition] = []
@@ -195,7 +193,7 @@ def normalize_input_symbols(
                     )
                 )
 
-    return (list(symbols), symbol_definitions)
+    return symbol_definitions
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -204,7 +202,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     defined_symbols = domain_config.get(CONF_SYMBOLS, [])
 
     symbol_definitions: list[SymbolDefinition]
-    symbols, symbol_definitions = normalize_input_symbols(defined_symbols)
+    symbol_definitions = normalize_input_symbols(defined_symbols)
     domain_config[CONF_SYMBOLS] = symbol_definitions
 
     global_scan_interval = domain_config.get(CONF_SCAN_INTERVAL)
@@ -233,7 +231,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     async def _setup_coordinator(now=None) -> None:
         # Using a static instance to keep the last successful cookies.
-        crumb_coordinator = CrumbCoordinator.getStaticInstance(hass)
+        crumb_coordinator = CrumbCoordinator.get_static_instance(hass)
 
         crumb = await crumb_coordinator.try_get_crumb_cookies()  # Get crumb first
         if crumb is None:
