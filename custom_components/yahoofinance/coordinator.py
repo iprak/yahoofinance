@@ -12,7 +12,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 import logging
 import re
-from typing import Final
+from typing import Any, Final
 
 import aiohttp
 
@@ -282,7 +282,7 @@ class CrumbCoordinator:
         return {**basic_data, **additional_data}
 
 
-class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
+class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Yahoo finance data update coordinator."""
 
     @staticmethod
@@ -468,7 +468,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
 
         return None
 
-    async def _async_update_data(self) -> dict:
+    async def _async_update_data(self) -> dict[str, Any]:
         """Return updated data if new JSON is valid.
 
         The exception will get properly handled in the caller (DataUpdateCoordinator.async_refresh)
@@ -512,7 +512,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
 
         return data
 
-    def process_json_result(self, result) -> tuple[bool, dict]:
+    def process_json_result(self, result) -> tuple[bool, dict[str, Any]]:
         """Process json result and return (error status, updated data)."""
 
         # Using current data if available. If returned data is missing then we might be
