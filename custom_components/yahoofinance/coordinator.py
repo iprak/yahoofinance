@@ -16,14 +16,11 @@ from typing import Final
 
 import aiohttp
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import event
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util.dt import utcnow
 
-# from homeassistant.util.file import write_utf8_file
 from .const import (
     BASE,
     CONSENT_HOST,
@@ -359,40 +356,8 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="YahooSymbolUpdateCoordinator",
-            update_method=self._async_update,
             update_interval=update_interval,
         )
-
-    def get_next_update_interval(self) -> timedelta:
-        """Get the update interval for the next async_track_point_in_utc_time call."""
-        if self.last_update_success:
-            return self._update_interval
-
-        _LOGGER.warning(
-            "Error obtaining data, retrying in %d seconds",
-            FAILURE_ASYNC_REQUEST_REFRESH,
-        )
-        return self._failure_update_interval
-
-    @callback
-    def _schedule_refresh(self) -> None:
-        """Schedule a refresh."""
-        if self._unsub_refresh:
-            self._unsub_refresh()
-            self._unsub_refresh = None
-
-        # We _floor_ utcnow to create a schedule on a rounded second,
-        # minimizing the time between the point and the real activation.
-        # That way we obtain a constant update frequency,
-        # as long as the update process takes less than a second
-
-        update_interval = self.get_next_update_interval()
-        if update_interval is not None:
-            self._unsub_refresh = async_track_point_in_utc_time(
-                self.hass,
-                self._handle_refresh_interval,
-                utcnow().replace(microsecond=0) + update_interval,
-            )
 
     def get_symbols(self) -> list[str]:
         """Return symbols tracked by the coordinator."""
@@ -433,55 +398,49 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
         cookies = self._cc.cookies
         _LOGGER.debug("Requesting data from '%s'", url)
 
-        try:
-            async with asyncio.timeout(REQUEST_TIMEOUT):
-                response = await self.websession.get(
-                    url, headers=REQUEST_HEADERS, cookies=cookies
+        async with asyncio.timeout(REQUEST_TIMEOUT):
+            response = await self.websession.get(
+                url, headers=REQUEST_HEADERS, cookies=cookies
+            )
+
+            result_json = await response.json()
+
+            if response.status == HTTPStatus.OK:
+                return result_json
+
+            # Sample errors:
+            #   {'finance':{'result': None, 'error': {'code': 'Unauthorized', 'description': 'Invalid Crumb'}}}
+            #   {'finance':{'result': None, 'error': {'code': 'Unauthorized', 'description': 'Invalid Cookie'}}}
+            finance_error_code_tuple = (
+                YahooSymbolUpdateCoordinator.get_finance_error_code(result_json)
+            )
+
+            if finance_error_code_tuple:
+                (
+                    finance_error_code,
+                    finance_error_description,
+                ) = finance_error_code_tuple
+
+                _LOGGER.error(
+                    "Received status %d (%s %s) for %s",
+                    response.status,
+                    finance_error_code,
+                    finance_error_description,
+                    url,
                 )
 
-                result_json = await response.json()
+                # Reset crumb so that it gets recalculated
+                if finance_error_code == "Unauthorized":
+                    _LOGGER.log("Resetting crumbs")
+                    self._cc.reset()
 
-                if response.status == HTTPStatus.OK:
-                    return result_json
-
-                # Sample errors:
-                #   {'finance':{'result': None, 'error': {'code': 'Unauthorized', 'description': 'Invalid Crumb'}}}
-                #   {'finance':{'result': None, 'error': {'code': 'Unauthorized', 'description': 'Invalid Cookie'}}}
-                finance_error_code_tuple = (
-                    YahooSymbolUpdateCoordinator.get_finance_error_code(result_json)
+            else:
+                _LOGGER.error(
+                    "Received status %d for %s, result=%s",
+                    response.status,
+                    url,
+                    result_json,
                 )
-
-                if finance_error_code_tuple:
-                    (
-                        finance_error_code,
-                        finance_error_description,
-                    ) = finance_error_code_tuple
-
-                    _LOGGER.error(
-                        "Received status %d (%s %s) for %s",
-                        response.status,
-                        finance_error_code,
-                        finance_error_description,
-                        url,
-                    )
-
-                    # Reset crumb so that it gets recalculated
-                    if finance_error_code == "Unauthorized":
-                        _LOGGER.log("Resetting crumbs")
-                        self._cc.reset()
-
-                else:
-                    _LOGGER.error(
-                        "Received status %d for %s, result=%s",
-                        response.status,
-                        url,
-                        result_json,
-                    )
-
-        except TimeoutError:
-            _LOGGER.error("Timed out getting data from %s", url)
-        except aiohttp.ClientError:
-            _LOGGER.error("Error getting data from %s", url)
 
         return None
 
@@ -509,14 +468,20 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
 
         return None
 
-    async def _async_update(self) -> dict:
+    async def _async_update_data(self) -> dict:
         """Return updated data if new JSON is valid.
 
         The exception will get properly handled in the caller (DataUpdateCoordinator.async_refresh)
         which also updates last_update_success. UpdateFailed is raised if JSON is invalid.
         """
 
-        json = await self.get_json()
+        # Set update interval for failure and reset it later if everything was okay
+        self.update_interval = self._failure_update_interval
+
+        try:
+            json = await self.get_json()
+        except (TimeoutError, aiohttp.ClientError) as error:
+            raise UpdateFailed(error) from error
 
         if json is None:
             raise UpdateFailed("No data received")
@@ -538,13 +503,13 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed("Data invalid, 'result' is None")
 
         (error_encountered, data) = self.process_json_result(result)
+        self.update_interval = self._update_interval
 
         if error_encountered:
             _LOGGER.info("Data = %s", result)
         else:
             _LOGGER.debug("Data = %s", result)
 
-        _LOGGER.info("Data updated [interval=%s]", self._update_interval)
         return data
 
     def process_json_result(self, result) -> tuple[bool, dict]:
