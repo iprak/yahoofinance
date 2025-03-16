@@ -30,3 +30,25 @@ jobs:
           git push --tags -f
 
           echo "next_tag=$next_tag" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tag_name: ${{ steps.next_minor_tag.outputs.next_tag }}
+          release_name: ${{ steps.next_minor_tag.outputs.next_tag }}
+          draft: false
+          prerelease: false
+
+      - name: "ZIP the integration directory"
+        shell: "bash"
+        run: |
+          cd "${{ github.workspace }}/custom_components/yahoofinance"
+          zip yahoofinance.zip -r ./
+
+      - name: "Upload the ZIP file to the release"
+        uses: "softprops/action-gh-release@v2.0.8"
+        with:
+          tag_name: ${{ steps.next_minor_tag.outputs.next_tag }}
+          files: ${{ github.workspace }}/custom_components/yahoofinance/yahoofinance.zip
