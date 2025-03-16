@@ -1,0 +1,31 @@
+name: Maunal release
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create next minor tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git fetch origin --tags --quiet
+
+          last_tag=`git describe --tags $(git rev-list --tags --max-count=1)`
+          echo "Last tag: ${last_tag}";
+
+          if [ -z "${last_tag}" ];then
+              last_tag="${INPUT_PREV_TAG}0.1.0";
+              echo "Last defaulted to ${last_tag}";
+          fi
+
+          next_tag="${last_tag%.*}.$((${last_tag##*.}+1))"
+          echo "Next tag: ${next_tag}";
+
+          git tag ${next_tag} -f
+          git push --tags -f
+
+          echo "next-tag=$next_tag" >> $GITHUB_OUTPUT
