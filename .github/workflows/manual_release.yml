@@ -9,6 +9,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create next minor tag
+        id: next_minor_tag
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -28,4 +29,4 @@ jobs:
           git tag ${next_tag} -f
           git push --tags -f
 
-          echo "next-tag=$next_tag" >> $GITHUB_OUTPUT
+          echo "next_tag=$next_tag" >> $GITHUB_OUTPUT
