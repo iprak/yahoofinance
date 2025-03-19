@@ -20,7 +20,7 @@ yahoofinance:
   #Update disabled
   #scan_interval: "manual"
 
-  scan_interval: 30
+  scan_interval: 45
 
   symbols:
     - symbol: "ISTNX"
@@ -34,7 +34,7 @@ yahoofinance:
       no_unit: true
     - symbol: EMIM.L
       target_currency: EUR
-      #scan_interval: 30
+      scan_interval: 30
     - symbol: AAPL
     - symbol: USDINR=X
       #scan_interval: 45
