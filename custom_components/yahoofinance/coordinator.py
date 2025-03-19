@@ -350,7 +350,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if isinstance(update_interval, str) and update_interval == MANUAL_SCAN_INTERVAL:
             update_interval = None
 
-        self._update_interval = update_interval
+        self._defined_update_interval = update_interval
 
         super().__init__(
             hass,
@@ -503,7 +503,9 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed("Data invalid, 'result' is None")
 
         (error_encountered, data) = self.process_json_result(result)
-        self.update_interval = self._update_interval
+
+        # Restore the specified interval
+        self.update_interval = self._defined_update_interval
 
         if error_encountered:
             _LOGGER.info("Data = %s", result)
