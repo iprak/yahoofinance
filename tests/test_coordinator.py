@@ -275,7 +275,7 @@ async def test_logging_when_process_json_result_reports_error(
     mock_coordinator.websession.get = AsyncMock(return_value=mock_response)
     mock_coordinator.process_json_result = Mock(return_value=(True, None))
 
-    with patch.object(coordinator, "_LOGGER") as mock_logger:
+    with patch.object(coordinator, "LOGGER") as mock_logger:
         await mock_coordinator.async_refresh()
         await hass.async_block_till_done()
 

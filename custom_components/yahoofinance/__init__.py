@@ -6,7 +6,6 @@ https://github.com/iprak/yahoofinance
 from __future__ import annotations
 
 from datetime import timedelta
-import logging
 
 import voluptuous as vol
 
@@ -42,13 +41,13 @@ from .const import (
     DOMAIN,
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATORS,
+    LOGGER,
     MANUAL_SCAN_INTERVAL,
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
 from .coordinator import CrumbCoordinator, YahooSymbolUpdateCoordinator
 
-_LOGGER = logging.getLogger(__name__)
 BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
 
 
@@ -222,7 +221,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         else:
             symbols_by_scan_interval[symbol.scan_interval] = [symbol.symbol]
 
-    _LOGGER.info("Total %d unique scan intervals", len(symbols_by_scan_interval))
+    LOGGER.info("Total %d unique scan intervals", len(symbols_by_scan_interval))
 
     # Pass down the config to platforms.
     hass.data[DOMAIN] = {
@@ -236,13 +235,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         crumb = await crumb_coordinator.try_get_crumb_cookies()  # Get crumb first
         if crumb is None:
             delay = crumb_coordinator.retry_duration
-            _LOGGER.warning("Unable to get crumb, re-trying in %d seconds", delay)
+            LOGGER.warning("Unable to get crumb, re-trying in %d seconds", delay)
             async_call_later(hass, delay, _setup_coordinator)
             return
 
         coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = {}
         for key_scan_interval, symbols in symbols_by_scan_interval.items():
-            _LOGGER.info(
+            LOGGER.info(
                 "Creating coordinator with scan_interval %s for symbols %s",
                 key_scan_interval,
                 symbols,
@@ -252,7 +251,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             )
             coordinators[key_scan_interval] = coordinator
 
-            _LOGGER.info(
+            LOGGER.info(
                 "Requesting initial data from coordinator with update interval of %s",
                 key_scan_interval,
             )
@@ -263,7 +262,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         async def handle_refresh_symbols(_call) -> None:
             """Refresh symbol data."""
-            _LOGGER.info("Processing refresh_symbols")
+            LOGGER.info("Processing refresh_symbols")
 
             for coordinator in coordinators.values():
                 await coordinator.async_refresh()
@@ -276,7 +275,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         for coordinator in coordinators.values():
             if not coordinator.last_update_success:
-                _LOGGER.debug(
+                LOGGER.debug(
                     "Coordinator did not report any data, requesting async_refresh"
                 )
                 hass.async_create_task(coordinator.async_request_refresh())

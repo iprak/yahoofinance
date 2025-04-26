@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import logging
 from typing import Final
 
 # Additional attributes exposed by the sensor
@@ -162,6 +163,8 @@ DEFAULT_CURRENCY: Final = "USD"
 DEFAULT_CURRENCY_SYMBOL: Final = "$"
 DOMAIN: Final = "yahoofinance"
 SERVICE_REFRESH: Final = "refresh_symbols"
+
+LOGGER = logging.getLogger(__package__)
 
 DEFAULT_SCAN_INTERVAL: Final = timedelta(hours=6)
 MANUAL_SCAN_INTERVAL: Final = "manual"
