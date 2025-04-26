@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
-from custom_components.yahoofinance import SymbolDefinition, convert_to_float
+from custom_components.yahoofinance import convert_to_float
 from custom_components.yahoofinance.const import (
     CONF_DECIMAL_PLACES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -32,6 +32,7 @@ from custom_components.yahoofinance.const import (
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
+from custom_components.yahoofinance.data import SymbolDefinition
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component

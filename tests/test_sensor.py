@@ -7,7 +7,6 @@ import pytest
 
 from custom_components.yahoofinance import (
     DEFAULT_SCAN_INTERVAL,
-    SymbolDefinition,
     YahooSymbolUpdateCoordinator,
 )
 from custom_components.yahoofinance.const import (
@@ -43,6 +42,7 @@ from custom_components.yahoofinance.const import (
     HASS_DATA_COORDINATORS,
     NUMERIC_DATA_GROUPS,
 )
+from custom_components.yahoofinance.data import SymbolDefinition
 from custom_components.yahoofinance.sensor import (
     YahooFinanceSensor,
     async_setup_platform,
