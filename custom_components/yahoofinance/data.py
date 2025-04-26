@@ -1,10 +1,30 @@
 """Data used by this integration."""
 
+from dataclasses import dataclass
 from datetime import timedelta
 
 from homeassistant.const import CONF_SCAN_INTERVAL
 
 from .const import CONF_NO_UNIT, CONF_TARGET_CURRENCY
+from .coordinator import YahooSymbolUpdateCoordinator
+
+
+@dataclass(frozen=True)
+class YahooFinanceData:
+    """Yahoo Finance data class."""
+
+    coordinators: dict[int, YahooSymbolUpdateCoordinator]
+    # symbols: list[SymbolDefinition]
+
+
+@dataclass(frozen=True)
+class SymbolData:
+    """Symbol definition data class."""
+
+    symbol: str
+    target_currency: str
+    scan_interval: int
+    no_unit: bool
 
 
 class SymbolDefinition:
