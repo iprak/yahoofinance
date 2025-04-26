@@ -8,7 +8,7 @@ logbook:
 logger:
   default: info
   logs:
-    custom_components.yahoofinance: debug
+    custom_components.yahoofinance: info
 
 yahoofinance:
   show_trending_icon: true
@@ -20,7 +20,8 @@ yahoofinance:
   #Update disabled
   #scan_interval: "manual"
 
-  scan_interval: 45
+  scan_interval:
+    seconds: 45
 
   symbols:
     - symbol: "ISTNX"
