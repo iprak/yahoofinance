@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import logging
 from typing import Final
 
 # Additional attributes exposed by the sensor
@@ -210,3 +211,5 @@ CURRENCY_CODES: Final = {
     "xpf": "CFPF",
     "xxx": "¤",
 }
+
+LOGGER = logging.getLogger(__name__)
