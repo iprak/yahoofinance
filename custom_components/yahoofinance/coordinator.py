@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from datetime import timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
-import logging
 import re
 from typing import Any, Final
 
@@ -30,14 +29,16 @@ from .const import (
     GET_CRUMB_URL,
     INITIAL_REQUEST_HEADERS,
     INITIAL_URL,
+    LOGGER,
     MANUAL_SCAN_INTERVAL,
     NUMERIC_DATA_DEFAULTS,
     NUMERIC_DATA_GROUPS,
     REQUEST_HEADERS,
     STRING_DATA_KEYS,
+    TOO_MANY_CRUMB_RETRY_FAILURES_COUNT,
+    TOO_MANY_CRUMB_RETRY_FAILURES_DELAY,
 )
 
-_LOGGER = logging.getLogger(__name__)
 REQUEST_TIMEOUT: Final = 10
 DELAY_ASYNC_REQUEST_REFRESH: Final = 5
 FAILURE_ASYNC_REQUEST_REFRESH: Final = 20
@@ -60,6 +61,8 @@ class CrumbCoordinator:
 
         self.retry_duration = CRUMB_RETRY_DELAY
         """Crumb retry request delay."""
+
+        self._crumb_retry_count = 0
 
     @staticmethod
     def get_static_instance(hass: HomeAssistant) -> CrumbCoordinator:
@@ -86,17 +89,15 @@ class CrumbCoordinator:
             data = await self.initial_navigation(consent_data.successful_consent_url)
 
             if data is None:  # Something went bad, we did get consent
-                _LOGGER.error("Post consent navigation failed")
+                LOGGER.error("Post consent navigation failed")
                 return None
 
             if data.need_consent:
-                _LOGGER.error(
-                    "Yahoo reported needing consent even after we got it once"
-                )
+                LOGGER.error("Yahoo reported needing consent even after we got it once")
                 return None
 
         if self.cookies_missing():
-            _LOGGER.error("Attempting to get crumb but have no cookies")
+            LOGGER.error("Attempting to get crumb but have no cookies")
 
         await self.try_crumb_page()
         return self.crumb
@@ -110,7 +111,7 @@ class CrumbCoordinator:
         """
 
         websession = async_get_clientsession(self._hass)
-        _LOGGER.debug("Navigating to base page %s", url)
+        LOGGER.debug("Navigating to base page %s", url)
 
         try:
             async with websession.get(
@@ -118,10 +119,10 @@ class CrumbCoordinator:
                 headers=INITIAL_REQUEST_HEADERS,
                 timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
             ) as response:
-                _LOGGER.debug("Response %d, URL: %s", response.status, response.url)
+                LOGGER.debug("Response %d, URL: %s", response.status, response.url)
 
                 if response.status != HTTPStatus.OK:
-                    _LOGGER.error(
+                    LOGGER.error(
                         "Failed to navigate to %s, status=%d, reason=%s",
                         url,
                         response.status,
@@ -135,7 +136,7 @@ class CrumbCoordinator:
 
                 # https://guce.yahoo.com/consent?brandType=nonEu&gcrumb=eZ_Jbm0&done=https%3A%2F%2Ffinance.yahoo.com%2F
                 if response.url.host.lower() == CONSENT_HOST:
-                    _LOGGER.info("Consent page %s detected", response.url)
+                    LOGGER.info("Consent page %s detected", response.url)
 
                     return ConsentData(
                         need_consent=True,
@@ -143,12 +144,12 @@ class CrumbCoordinator:
                         consent_post_url=response.url,
                     )
 
-                _LOGGER.debug("No consent needed, have cookies=%s", bool(self.cookies))
+                LOGGER.debug("No consent needed, have cookies=%s", bool(self.cookies))
 
         except TimeoutError as ex:
-            _LOGGER.error("Timed out accessing initial url. %s", ex)
+            LOGGER.error("Timed out accessing initial url. %s", ex)
         except aiohttp.ClientError as ex:
-            _LOGGER.error("Error accessing initial url. %s", ex)
+            LOGGER.error("Error accessing initial url. %s", ex)
 
         return ConsentData()
 
@@ -157,7 +158,7 @@ class CrumbCoordinator:
 
         websession = async_get_clientsession(self._hass)
         form_data = self.build_consent_form_data(consent_data.consent_content)
-        _LOGGER.debug("Posting consent %s", str(form_data))
+        LOGGER.debug("Posting consent %s", str(form_data))
 
         try:
             async with asyncio.timeout(REQUEST_TIMEOUT):
@@ -173,7 +174,7 @@ class CrumbCoordinator:
                 # 200
 
                 if response.status != HTTPStatus.OK:
-                    _LOGGER.error(
+                    LOGGER.error(
                         "Failed to post consent %d, reason=%s",
                         response.status,
                         response.reason,
@@ -185,15 +186,15 @@ class CrumbCoordinator:
 
                 consent_data.successful_consent_url = response.url
 
-                _LOGGER.debug(
+                LOGGER.debug(
                     "After consent processing, have cookies=%s", bool(self.cookies)
                 )
                 return True
 
         except TimeoutError as ex:
-            _LOGGER.error("Timed out processing consent. %s", ex)
+            LOGGER.error("Timed out processing consent. %s", ex)
         except aiohttp.ClientError as ex:
-            _LOGGER.error("Error accessing consent url. %s", ex)
+            LOGGER.error("Error accessing consent url. %s", ex)
 
         return False
 
@@ -204,7 +205,7 @@ class CrumbCoordinator:
     async def try_crumb_page(self) -> str | None:
         """Try to get crumb from the end point."""
 
-        _LOGGER.info("Accessing crumb page")
+        LOGGER.info("Accessing crumb page")
         websession = async_get_clientsession(self._hass)
 
         async with websession.get(
@@ -213,23 +214,29 @@ class CrumbCoordinator:
             timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
             cookies=self.cookies,
         ) as response:
-            _LOGGER.debug("Crumb response status: %d, %s", response.status, response)
+            LOGGER.debug("Crumb response status: %d, %s", response.status, response)
 
             if response.status == HTTPStatus.OK:
                 self.crumb = await response.text()
                 if not self.crumb:
-                    _LOGGER.error("No crumb reported")
+                    LOGGER.error("No crumb reported")
 
-                _LOGGER.debug("Crumb page reported %s", self.crumb)
+                LOGGER.debug("Crumb page reported %s", self.crumb)
+                self._crumb_retry_count = 0
                 return self.crumb
 
-            _LOGGER.error(
+            LOGGER.error(
                 "Crumb request responded with status=%d, reason=%s",
                 response.status,
                 response.reason,
             )
 
-            if response.status == 429:
+            self._crumb_retry_count = self._crumb_retry_count + 1
+
+            if self._crumb_retry_count > TOO_MANY_CRUMB_RETRY_FAILURES_COUNT:
+                self.retry_duration = TOO_MANY_CRUMB_RETRY_FAILURES_DELAY
+                self._crumb_retry_count = 0
+            elif response.status == 429:
                 # Ideally we would want to use the seconds passed back in the header
                 # for 429 but there seems to be no such value.
                 self.retry_duration = CRUMB_RETRY_DELAY_429
@@ -241,16 +248,16 @@ class CrumbCoordinator:
     # async def parse_crumb_from_content(self, content: str) -> str:
     #     """Parse and update crumb from response content."""
 
-    #     _LOGGER.debug("Parsing crumb from content (length: %d)", len(content))
+    #     LOGGER.debug("Parsing crumb from content (length: %d)", len(content))
 
     #     start_pos = content.find('"crumb":"')
-    #     _LOGGER.debug("Start position: %d", start_pos)
+    #     LOGGER.debug("Start position: %d", start_pos)
     #     end_pos = -1
 
     #     if start_pos != -1:
     #         start_pos = start_pos + 9
     #         end_pos = content.find('"', start_pos + 10)
-    #         _LOGGER.debug("End position: %d", end_pos)
+    #         LOGGER.debug("End position: %d", end_pos)
     #         if end_pos != -1:
     #             self.crumb = (
     #                 content[start_pos:end_pos]
@@ -260,13 +267,13 @@ class CrumbCoordinator:
 
     #     # Crumb was not located
     #     if not self.crumb:
-    #         _LOGGER.info(
+    #         LOGGER.info(
     #             "Crumb not found, start position: %d, ending position: %d. Refer to YahooFinanceCrumbContent.log in the config folder.",
     #             start_pos,
     #             end_pos,
     #         )
 
-    #         if _LOGGER.isEnabledFor(logging.INFO):
+    #         if LOGGER.isEnabledFor(logging.INFO):
     #             await self._hass.async_add_executor_job(
     #                 write_utf8_file,
     #                 self._hass.config.path("YahooFinanceCrumbContent.log"),
@@ -326,7 +333,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         conversion_symbol = f"{from_currency}{to_currency}=X"
 
         if conversion_symbol != symbol:
-            _LOGGER.info(
+            LOGGER.info(
                 "Conversion symbol updated to %s from %s", conversion_symbol, symbol
             )
 
@@ -354,7 +361,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         super().__init__(
             hass,
-            _LOGGER,
+            LOGGER,
             name="YahooSymbolUpdateCoordinator",
             update_interval=update_interval,
         )
@@ -382,7 +389,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._async_request_refresh_later,
             )
 
-            _LOGGER.info(
+            LOGGER.info(
                 "Added %s and requested update in %d seconds",
                 symbol,
                 DELAY_ASYNC_REQUEST_REFRESH,
@@ -396,7 +403,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         url = await self.build_request_url()
         cookies = self._cc.cookies
-        _LOGGER.debug("Requesting data from '%s'", url)
+        LOGGER.debug("Requesting data from '%s'", url)
 
         async with asyncio.timeout(REQUEST_TIMEOUT):
             response = await self.websession.get(
@@ -421,7 +428,7 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     finance_error_description,
                 ) = finance_error_code_tuple
 
-                _LOGGER.error(
+                LOGGER.error(
                     "Received status %d (%s %s) for %s",
                     response.status,
                     finance_error_code,
@@ -431,11 +438,11 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 # Reset crumb so that it gets recalculated
                 if finance_error_code == "Unauthorized":
-                    _LOGGER.log("Resetting crumbs")
+                    LOGGER.log("Resetting crumbs")
                     self._cc.reset()
 
             else:
-                _LOGGER.error(
+                LOGGER.error(
                     "Received status %d for %s, result=%s",
                     response.status,
                     url,
@@ -508,9 +515,9 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.update_interval = self._defined_update_interval
 
         if error_encountered:
-            _LOGGER.info("Data = %s", result)
+            LOGGER.info("Data = %s", result)
         else:
-            _LOGGER.debug("Data = %s", result)
+            LOGGER.debug("Data = %s", result)
 
         return data
 
@@ -539,19 +546,19 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     symbols.remove(fixed_symbol)
                     symbol = fixed_symbol
                 else:
-                    _LOGGER.warning("Received %s not in symbol list", symbol)
+                    LOGGER.warning("Received %s not in symbol list", symbol)
                     error_encountered = True
 
             data[symbol] = self.parse_symbol_data(symbol_data)
 
-            _LOGGER.debug(
+            LOGGER.debug(
                 "Updated %s to %s",
                 symbol,
                 data[symbol][DATA_REGULAR_MARKET_PRICE],
             )
 
         if len(symbols) > 0:
-            _LOGGER.warning("No data received for %s", symbols)
+            LOGGER.warning("No data received for %s", symbols)
             error_encountered = True
 
         return (error_encountered, data)

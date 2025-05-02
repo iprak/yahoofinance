@@ -19,6 +19,7 @@ from custom_components.yahoofinance.coordinator import (
     FAILURE_ASYNC_REQUEST_REFRESH,
     CrumbCoordinator,
 )
+from homeassistant.core import HomeAssistant
 
 from . import TEST_CRUMB, TEST_SYMBOL
 from .conftest import create_mock_coordinator
@@ -39,7 +40,7 @@ YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
     ],
 )
 async def test_incomplete_json(
-    hass, parsed_json, message, mocked_crumb_coordinator
+    hass: HomeAssistant, parsed_json, message, mocked_crumb_coordinator
 ) -> None:
     """Existing data is not updated if JSON is invalid."""
 
@@ -71,7 +72,7 @@ async def test_incomplete_json(
     ],
 )
 async def test_json_download_failure(
-    hass, raised_exception, mocked_crumb_coordinator
+    hass: HomeAssistant, raised_exception, mocked_crumb_coordinator
 ) -> None:
     """Existing data is not updated if exception encountered while downloading json."""
 
@@ -98,7 +99,7 @@ async def test_json_download_failure(
 
 
 async def test_successful_data_parsing(
-    hass, mocked_crumb_coordinator, mock_json
+    hass: HomeAssistant, mocked_crumb_coordinator, mock_json
 ) -> None:
     """Tests successful data parsing."""
 
@@ -113,7 +114,7 @@ async def test_successful_data_parsing(
     assert mock_coordinator.last_update_success is True
 
 
-async def test_add_symbol(hass, mocked_crumb_coordinator) -> None:
+async def test_add_symbol(hass: HomeAssistant, mocked_crumb_coordinator) -> None:
     """Add symbol for load."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
         [], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
@@ -125,7 +126,9 @@ async def test_add_symbol(hass, mocked_crumb_coordinator) -> None:
         assert len(mock_call_later.mock_calls) == 1
 
 
-async def test_add_symbol_existing(hass, mocked_crumb_coordinator) -> None:
+async def test_add_symbol_existing(
+    hass: HomeAssistant, mocked_crumb_coordinator
+) -> None:
     """Test check for existing symbols."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
         [TEST_SYMBOL], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
@@ -134,7 +137,7 @@ async def test_add_symbol_existing(hass, mocked_crumb_coordinator) -> None:
 
 
 async def test_update_interval_when_update_fails(
-    hass, mocked_crumb_coordinator
+    hass: HomeAssistant, mocked_crumb_coordinator
 ) -> None:
     """Update interval for the next async_track_point_in_utc_time call."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
@@ -142,29 +145,36 @@ async def test_update_interval_when_update_fails(
     )
 
     # update_interval is DEFAULT_SCAN_INTERVAL
-    assert mock_coordinator.get_next_update_interval() is DEFAULT_SCAN_INTERVAL
+    assert mock_coordinator.update_interval is DEFAULT_SCAN_INTERVAL
 
     # update_interval is FAILURE_ASYNC_REQUEST_REFRESH if update failed
-    mock_coordinator.last_update_success = False
-    assert mock_coordinator.get_next_update_interval() == timedelta(
+    mock_coordinator.websession.get = AsyncMock(side_effect=aiohttp.ClientError)
+    await mock_coordinator.async_refresh()
+
+    assert mock_coordinator.update_interval == timedelta(
         seconds=FAILURE_ASYNC_REQUEST_REFRESH
     )
 
 
-async def test_update_when_update_is_disabled(hass, mocked_crumb_coordinator) -> None:
+async def test_update_when_update_is_disabled(
+    hass: HomeAssistant, mocked_crumb_coordinator
+) -> None:
     """No update is performed if update_interval is None."""
 
     mock_coordinator = YahooSymbolUpdateCoordinator(
         [TEST_SYMBOL], hass, None, mocked_crumb_coordinator
     )
 
-    mock_coordinator.last_update_success = False
-    assert mock_coordinator.get_next_update_interval() == timedelta(
+    # There is no update for "manual" update case when update is disabled
+    assert mock_coordinator.update_interval is None
+
+    # Mock a failure for manual refresh
+    mock_coordinator.websession.get = AsyncMock(side_effect=aiohttp.ClientError)
+    await mock_coordinator.async_refresh()
+
+    assert mock_coordinator.update_interval == timedelta(
         seconds=FAILURE_ASYNC_REQUEST_REFRESH
     )
-
-    mock_coordinator.last_update_success = True
-    assert mock_coordinator.get_next_update_interval() is None
 
 
 @pytest.mark.parametrize(
@@ -186,7 +196,7 @@ async def test_update_when_update_is_disabled(hass, mocked_crumb_coordinator) ->
     ],
 )
 async def test_fix_conversion_symbol(
-    hass, symbol, symbol_data, expected_symbol, mocked_crumb_coordinator
+    hass: HomeAssistant, symbol, symbol_data, expected_symbol, mocked_crumb_coordinator
 ) -> None:
     """Test conversion symbol correction."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
@@ -235,7 +245,7 @@ async def test_fix_conversion_symbol(
     ],
 )
 async def test_process_json_result(
-    hass,
+    hass: HomeAssistant,
     symbols,
     result,
     expected_error_encountered,
@@ -261,7 +271,7 @@ async def test_process_json_result(
 
 
 async def test_logging_when_process_json_result_reports_error(
-    hass, mock_json, mocked_crumb_coordinator
+    hass: HomeAssistant, mock_json, mocked_crumb_coordinator
 ) -> None:
     """Tests call to logger.info() when process_json_result reports an error."""
     mock_coordinator = YahooSymbolUpdateCoordinator(
@@ -275,21 +285,21 @@ async def test_logging_when_process_json_result_reports_error(
     mock_coordinator.websession.get = AsyncMock(return_value=mock_response)
     mock_coordinator.process_json_result = Mock(return_value=(True, None))
 
-    with patch.object(coordinator, "_LOGGER") as mock_logger:
+    with patch.object(coordinator, "LOGGER") as mock_logger:
         await mock_coordinator.async_refresh()
         await hass.async_block_till_done()
 
         assert mock_logger.error.call_count == 1
 
 
-def test_crumbcoordinator_ctor(hass) -> None:
+def test_crumbcoordinator_ctor(hass: HomeAssistant) -> None:
     """Test CrumbCoordinator contructor."""
     instance = CrumbCoordinator(hass)
     assert instance.cookies is None
     assert instance.crumb is None
 
 
-def test_crumbcoordinator_reset(hass) -> None:
+def test_crumbcoordinator_reset(hass: HomeAssistant) -> None:
     """Test CrumbCoordinator contructor."""
     instance = CrumbCoordinator(hass)
     instance.cookies = "cookies"
@@ -300,7 +310,7 @@ def test_crumbcoordinator_reset(hass) -> None:
     assert instance.crumb is None
 
 
-async def test_build_request_url(hass, mocked_crumb_coordinator) -> None:
+async def test_build_request_url(hass: HomeAssistant, mocked_crumb_coordinator) -> None:
     """Test build_request_url."""
 
     mock_coordinator = YahooSymbolUpdateCoordinator(

@@ -210,8 +210,9 @@ async def test_scan_interval(
     type(mock_instance).data = PropertyMock(return_value=None)
     type(mock_instance).last_update_success = PropertyMock(return_value=False)
 
-    with patch(YSUC, return_value=mock_instance), patch(
-        f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)
+    with (
+        patch(YSUC, return_value=mock_instance),
+        patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)),
     ):
         config = {DOMAIN: domain_config}
 
@@ -237,8 +238,9 @@ async def test_setup_optionally_requests_coordinator_refresh(
     type(mock_instance).data = PropertyMock(return_value=None)
     type(mock_instance).last_update_success = PropertyMock(return_value=False)
 
-    with patch(YSUC, return_value=mock_instance), patch(
-        f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)
+    with (
+        patch(YSUC, return_value=mock_instance),
+        patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)),
     ):
         assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
         await hass.async_block_till_done()
@@ -253,11 +255,12 @@ async def test_refresh_symbols_service(
 ) -> None:
     """Test refresh_symbols service callback."""
 
-    with patch(
-        f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)
-    ), patch(
-        f"{YSUC}._async_update", AsyncMock(return_value=None)
-    ) as mock_async_request_refresh:
+    with (
+        patch(f"{YCC}.try_get_crumb_cookies", AsyncMock(return_value=TEST_CRUMB)),
+        patch(
+            f"{YSUC}._async_update_data", AsyncMock(return_value=None)
+        ) as mock_async_request_refresh,
+    ):
         assert await async_setup_component(hass, DOMAIN, SAMPLE_CONFIG) is True
         await hass.async_block_till_done()
         assert mock_async_request_refresh.call_count == 1
