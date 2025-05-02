@@ -173,6 +173,9 @@ CRUMB_RETRY_DELAY: Final = 15
 CRUMB_RETRY_DELAY_429: Final = 60
 """Duration for crumb re-try when receiving 429 code."""
 
+TOO_MANY_CRUMB_RETRY_FAILURES_DELAY: Final = 300
+TOO_MANY_CRUMB_RETRY_FAILURES_COUNT: Final = 5
+
 CURRENCY_CODES: Final = {
     "aud": "$",
     "bdt": "৳",

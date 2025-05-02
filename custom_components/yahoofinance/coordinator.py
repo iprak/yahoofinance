@@ -35,6 +35,8 @@ from .const import (
     NUMERIC_DATA_GROUPS,
     REQUEST_HEADERS,
     STRING_DATA_KEYS,
+    TOO_MANY_CRUMB_RETRY_FAILURES_COUNT,
+    TOO_MANY_CRUMB_RETRY_FAILURES_DELAY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,6 +62,8 @@ class CrumbCoordinator:
 
         self.retry_duration = CRUMB_RETRY_DELAY
         """Crumb retry request delay."""
+
+        self._crumb_retry_count = 0
 
     @staticmethod
     def get_static_instance(hass: HomeAssistant) -> CrumbCoordinator:
@@ -221,6 +225,7 @@ class CrumbCoordinator:
                     _LOGGER.error("No crumb reported")
 
                 _LOGGER.debug("Crumb page reported %s", self.crumb)
+                self._crumb_retry_count = 0
                 return self.crumb
 
             _LOGGER.error(
@@ -229,7 +234,12 @@ class CrumbCoordinator:
                 response.reason,
             )
 
-            if response.status == 429:
+            self._crumb_retry_count = self._crumb_retry_count + 1
+
+            if self._crumb_retry_count > TOO_MANY_CRUMB_RETRY_FAILURES_COUNT:
+                self.retry_duration = TOO_MANY_CRUMB_RETRY_FAILURES_DELAY
+                self._crumb_retry_count = 0
+            elif response.status == 429:
                 # Ideally we would want to use the seconds passed back in the header
                 # for 429 but there seems to be no such value.
                 self.retry_duration = CRUMB_RETRY_DELAY_429
