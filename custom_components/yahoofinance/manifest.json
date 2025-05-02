@@ -8,5 +8,8 @@
     "@iprak"
   ],
   "issue_tracker": "https://github.com/iprak/yahoofinance/issues",
-  "version": "1.2.15"
+  "version": "1.2.15",
+  "config_flow": true,
+  "integration_type": "service",
+  "single_config_entry": true
 }

@@ -1,0 +1,37 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "symbols": "Symbol"
+                },
+                "data_description": {
+                    "symbols": "Enter symbols to track one on each line"
+                }
+            }
+        },
+        "error": {
+            "invalid_symbol": "The symbol is invalid"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "menu_options": {
+                    "symbol_options": "Update symbol options",
+                    "global_options": "Change global options",
+                    "edit_symbol_list": "Edit symbols"
+                }
+            },
+            "basic_options": {
+                "title": "[%key:component::cast::config::step::config::title%]"
+            },
+            "advanced_options": {
+                "title": "Advanced configuration"
+            }
+        }
+    },
+    "menu_options": {
+        "title": "Options"
+    }
+}

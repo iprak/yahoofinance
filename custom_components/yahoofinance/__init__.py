@@ -9,9 +9,9 @@ from datetime import timedelta
 
 import voluptuous as vol
 
-from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.const import CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType
@@ -39,17 +39,18 @@ from .const import (
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    HASS_DATA_CONFIG,
-    HASS_DATA_COORDINATORS,
     LOGGER,
     MANUAL_SCAN_INTERVAL,
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
 )
 from .coordinator import CrumbCoordinator, YahooSymbolUpdateCoordinator
-from .data import SymbolDefinition
+from .data import SymbolDefinition, YahooFinanceData
 
 BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
+
+PLATFORMS = [Platform.SENSOR]
+type YahooFinanceConfigEntry = ConfigEntry[YahooFinanceData]
 
 
 def minimum_scan_interval(value: timedelta) -> timedelta:
@@ -123,7 +124,9 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-def normalize_input_symbols(defined_symbols: list) -> list[SymbolDefinition]:
+def normalize_input_symbols(
+    defined_symbols: list, global_scan_interval: timedelta
+) -> list[SymbolDefinition]:
     """Normalize input and remove duplicates."""
     symbols = set()
     symbol_definitions: list[SymbolDefinition] = []
@@ -132,7 +135,9 @@ def normalize_input_symbols(defined_symbols: list) -> list[SymbolDefinition]:
         if isinstance(value, str):
             if value not in symbols:
                 symbols.add(value)
-                symbol_definitions.append(SymbolDefinition(value))
+                symbol_definitions.append(
+                    SymbolDefinition(value, scan_interval=global_scan_interval)
+                )
         else:
             symbol = value["symbol"]
             if symbol not in symbols:
@@ -141,7 +146,9 @@ def normalize_input_symbols(defined_symbols: list) -> list[SymbolDefinition]:
                     SymbolDefinition(
                         symbol,
                         target_currency=value.get(CONF_TARGET_CURRENCY),
-                        scan_interval=value.get(CONF_SCAN_INTERVAL),
+                        scan_interval=value.get(
+                            CONF_SCAN_INTERVAL, global_scan_interval
+                        ),
                         no_unit=value.get(CONF_NO_UNIT),
                     )
                 )
@@ -151,17 +158,36 @@ def normalize_input_symbols(defined_symbols: list) -> list[SymbolDefinition]:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the component."""
-    domain_config = config.get(DOMAIN, {})
-    defined_symbols = domain_config.get(CONF_SYMBOLS, [])
+    # domain_config = config.get(DOMAIN, {})
+    # if hass.config_entries.async_entries(DOMAIN):
+    #     # We skip import in case we already have config entries
+    #     return True
+
+    # # migrate_notify_issue(hass, DOMAIN, "Yahoo", "2024.12.0")
+    # hass.async_create_task(
+    #     hass.config_entries.flow.async_init(
+    #         DOMAIN, context={"source": SOURCE_IMPORT}, data=domain_config
+    #     )
+    # )
+    return True
+
+
+async def async_setup_entry(
+    hass: HomeAssistant, entry: YahooFinanceConfigEntry
+) -> bool:
+    """Set up Yahoo Finance from a config entry."""
+
+    options = dict(entry.options)
+
+    defined_symbols = options.get(CONF_SYMBOLS, [])
+    global_scan_interval = options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
     symbol_definitions: list[SymbolDefinition]
-    symbol_definitions = normalize_input_symbols(defined_symbols)
-    domain_config[CONF_SYMBOLS] = symbol_definitions
-
-    global_scan_interval = domain_config.get(CONF_SCAN_INTERVAL)
+    symbol_definitions = normalize_input_symbols(defined_symbols, global_scan_interval)
+    # domain_config[CONF_SYMBOLS] = symbol_definitions
 
     # Populate parsed value into domain_config
-    domain_config[CONF_SCAN_INTERVAL] = global_scan_interval
+    # domain_config[CONF_SCAN_INTERVAL] = global_scan_interval
 
     # Group symbols by scan_interval
     symbols_by_scan_interval: dict[timedelta, list[str]] = {}
@@ -178,9 +204,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     LOGGER.info("Total %d unique scan intervals", len(symbols_by_scan_interval))
 
     # Pass down the config to platforms.
-    hass.data[DOMAIN] = {
-        HASS_DATA_CONFIG: domain_config,
-    }
+    # hass.data[DOMAIN] = {
+    #     HASS_DATA_CONFIG: domain_config,
+    # }
 
     async def _setup_coordinator(now=None) -> None:
         # Using a static instance to keep the last successful cookies.
@@ -212,7 +238,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             await coordinator.async_refresh()
 
         # Pass down the coordinator to platforms.
-        hass.data[DOMAIN][HASS_DATA_COORDINATORS] = coordinators
+        # hass.data[DOMAIN][HASS_DATA_COORDINATORS] = coordinators
+        entry.runtime_data = YahooFinanceData(coordinators=coordinators)
 
         async def handle_refresh_symbols(_call) -> None:
             """Refresh symbol data."""
@@ -234,12 +261,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 )
                 hass.async_create_task(coordinator.async_request_refresh())
 
-        hass.async_create_task(
-            discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
-        )
+        # hass.async_create_task(
+        #    discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+        # )
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        entry.async_on_unload(entry.add_update_listener(update_listener))
 
     await _setup_coordinator()
     return True
+
+
+async def async_unload_entry(
+    hass: HomeAssistant, entry: YahooFinanceConfigEntry
+) -> bool:
+    """Unload a config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def update_listener(hass: HomeAssistant, entry: YahooFinanceConfigEntry) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 def convert_to_float(value) -> float | None:

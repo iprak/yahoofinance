@@ -12,7 +12,8 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import ATTR_ATTRIBUTION
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ATTRIBUTION, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -20,7 +21,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType, StateTyp
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from . import convert_to_float
+from . import convert_to_float, normalize_input_symbols
 from .const import (
     ATTR_CURRENCY_SYMBOL,
     ATTR_DIVIDEND_DATE,
@@ -52,6 +53,7 @@ from .const import (
     DATA_SHORT_NAME,
     DEFAULT_CURRENCY,
     DEFAULT_NUMERIC_DATA_GROUP,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATORS,
@@ -73,24 +75,50 @@ async def async_setup_platform(
 ):
     """Set up the Yahoo Finance sensor platform."""
 
-    coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = hass.data[DOMAIN][
-        HASS_DATA_COORDINATORS
-    ]
-    domain_config = hass.data[DOMAIN][HASS_DATA_CONFIG]
-    symbol_definitions: list[SymbolDefinition] = domain_config[CONF_SYMBOLS]
+    # coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = hass.data[DOMAIN][
+    #     HASS_DATA_COORDINATORS
+    # ]
+    # domain_config = hass.data[DOMAIN][HASS_DATA_CONFIG]
+    # symbol_definitions: list[SymbolDefinition] = domain_config[CONF_SYMBOLS]
 
-    # We don't know the currency of a symbol so can't added conversion symbols upfront
+    # # We don't know the currency of a symbol so can't added conversion symbols upfront
+
+    # sensors = [
+    #     YahooFinanceSensor(
+    #         hass, coordinators[symbol.scan_interval], symbol, domain_config
+    #     )
+    #     for symbol in symbol_definitions
+    # ]
+
+    # # We have already invoked async_refresh on coordinator, so don'tupdate_before_add
+    # async_add_entities(sensors, update_before_add=False)
+    # LOGGER.info("Entities added for %s", [item.symbol for item in symbol_definitions])
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the file sensor."""
+
+    coordinators = entry.runtime_data.coordinators
+    options = dict(entry.options)
+
+    global_scan_interval: timedelta = options.get(
+        CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+    )
+    defined_symbols = options.get(CONF_SYMBOLS, [])
+    symbol_definitions = normalize_input_symbols(defined_symbols, global_scan_interval)
 
     sensors = [
         YahooFinanceSensor(
-            hass, coordinators[symbol.scan_interval], symbol, domain_config
+            hass, coordinators[symbol.scan_interval], symbol, options, entry
         )
         for symbol in symbol_definitions
     ]
 
-    # We have already invoked async_refresh on coordinator, so don'tupdate_before_add
-    async_add_entities(sensors, update_before_add=False)
-    LOGGER.info("Entities added for %s", [item.symbol for item in symbol_definitions])
+    async_add_entities(sensors)
 
 
 class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
@@ -114,21 +142,23 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         hass: HomeAssistant,
         coordinator: YahooSymbolUpdateCoordinator,
         symbol_definition: SymbolDefinition,
-        domain_config: dict,
+        options: dict,
+        entry: ConfigEntry,
     ) -> None:
         """Initialize the YahooFinance entity."""
         super().__init__(coordinator)
 
         # Entity.hass is only populated after async_add_entities, use local reference to hass
-        self._hass = hass
+        # self._hass = hass
+        self._entry = entry
 
         symbol = symbol_definition.symbol
         self._symbol = symbol
-        self._show_trending_icon = domain_config[CONF_SHOW_TRENDING_ICON]
-        self._show_currency_symbol_as_unit = domain_config[
-            CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT
-        ]
-        self._decimal_places = domain_config[CONF_DECIMAL_PLACES]
+        self._show_trending_icon = options.get(CONF_SHOW_TRENDING_ICON, False)
+        self._show_currency_symbol_as_unit = options.get(
+            CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT, False
+        )
+        self._decimal_places = options.get(CONF_DECIMAL_PLACES, 2)
         self._previous_close = None
         self._target_currency = symbol_definition.target_currency
         self._no_unit = symbol_definition.no_unit
@@ -153,7 +183,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         # Initialize all numeric attributes which we want to include to None
         for group in NUMERIC_DATA_GROUPS:
-            if group == DEFAULT_NUMERIC_DATA_GROUP or domain_config.get(group, True):
+            if group == DEFAULT_NUMERIC_DATA_GROUP or options.get(group, True):
                 for value in NUMERIC_DATA_GROUPS[group]:
                     self._numeric_data_to_include.append(value)
 
@@ -260,9 +290,12 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
     def _find_symbol_data(self, symbol: str) -> any | None:
         """Find data for the specified symbol in all coordinators."""
-        coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = self._hass.data[
-            DOMAIN
-        ][HASS_DATA_COORDINATORS]
+        # coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = self._hass.data[
+        #    DOMAIN
+        # ][HASS_DATA_COORDINATORS]
+        coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = (
+            self._entry.runtime_data
+        )
 
         if coordinators:
             for coordinator in coordinators.values():
