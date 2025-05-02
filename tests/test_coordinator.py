@@ -145,11 +145,13 @@ async def test_update_interval_when_update_fails(
     )
 
     # update_interval is DEFAULT_SCAN_INTERVAL
-    assert mock_coordinator.get_next_update_interval() is DEFAULT_SCAN_INTERVAL
+    assert mock_coordinator.update_interval is DEFAULT_SCAN_INTERVAL
 
     # update_interval is FAILURE_ASYNC_REQUEST_REFRESH if update failed
-    mock_coordinator.last_update_success = False
-    assert mock_coordinator.get_next_update_interval() == timedelta(
+    mock_coordinator.websession.get = AsyncMock(side_effect=aiohttp.ClientError)
+    await mock_coordinator.async_refresh()
+
+    assert mock_coordinator.update_interval == timedelta(
         seconds=FAILURE_ASYNC_REQUEST_REFRESH
     )
 
@@ -163,13 +165,16 @@ async def test_update_when_update_is_disabled(
         [TEST_SYMBOL], hass, None, mocked_crumb_coordinator
     )
 
-    mock_coordinator.last_update_success = False
-    assert mock_coordinator.get_next_update_interval() == timedelta(
+    # There is no update for "manual" update case when update is disabled
+    assert mock_coordinator.update_interval is None
+
+    # Mock a failure for manual refresh
+    mock_coordinator.websession.get = AsyncMock(side_effect=aiohttp.ClientError)
+    await mock_coordinator.async_refresh()
+
+    assert mock_coordinator.update_interval == timedelta(
         seconds=FAILURE_ASYNC_REQUEST_REFRESH
     )
-
-    mock_coordinator.last_update_success = True
-    assert mock_coordinator.get_next_update_interval() is None
 
 
 @pytest.mark.parametrize(
@@ -280,7 +285,7 @@ async def test_logging_when_process_json_result_reports_error(
     mock_coordinator.websession.get = AsyncMock(return_value=mock_response)
     mock_coordinator.process_json_result = Mock(return_value=(True, None))
 
-    with patch.object(coordinator, "_LOGGER") as mock_logger:
+    with patch.object(coordinator, "LOGGER") as mock_logger:
         await mock_coordinator.async_refresh()
         await hass.async_block_till_done()
 
