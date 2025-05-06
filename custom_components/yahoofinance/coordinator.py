@@ -229,7 +229,7 @@ class CrumbCoordinator:
                     if not self.crumb:
                         LOGGER.error("No crumb reported")
 
-                    LOGGER.debug("Crumb page reported %s", self.crumb)
+                    LOGGER.info("Crumb page reported %s", self.crumb)
                     self._crumb_retry_count = 0
                     return self.crumb
 
@@ -450,9 +450,14 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
 
         for user_agent in USER_AGENTS_FOR_XHR:
+            # Skip if we have already tried the agent
+            if preferred_user_agent == user_agent:
+                continue
+
             [result_json, status] = await self._fetch_json(url, user_agent)
 
             if status == HTTPStatus.OK:
+                LOGGER.info("Successful data received for '%s'", user_agent)
                 return result_json
 
             if status != 429:
