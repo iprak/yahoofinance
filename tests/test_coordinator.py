@@ -289,7 +289,7 @@ async def test_logging_when_process_json_result_reports_error(
         await mock_coordinator.async_refresh()
         await hass.async_block_till_done()
 
-        assert mock_logger.error.call_count == 1
+        assert mock_logger.info.call_count == 1
 
 
 def test_crumbcoordinator_ctor(hass: HomeAssistant) -> None:
