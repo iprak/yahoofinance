@@ -140,7 +140,7 @@ STRING_DATA_KEYS: Final = [
 ATTRIBUTION: Final = "Data provided by Yahoo Finance"
 BASE: Final = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="
 
-INITIAL_URL: Final = "https://finance.yahoo.com/quote/NQ%3DF"
+INITIAL_URL: Final = "https://finance.yahoo.com/quote/NQ%3DF/"
 CONSENT_HOST: Final = "consent.yahoo.com"
 GET_CRUMB_URL: Final = "https://query2.finance.yahoo.com/v1/test/getcrumb"
 
