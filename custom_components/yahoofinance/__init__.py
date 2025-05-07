@@ -5,15 +5,18 @@ https://github.com/iprak/yahoofinance
 
 from __future__ import annotations
 
+import contextlib
 from datetime import timedelta
 
 import voluptuous as vol
 
-from homeassistant.const import CONF_SCAN_INTERVAL, Platform
+from homeassistant.const import CONF_SCAN_INTERVAL, SERVICE_RELOAD, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import discovery
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import discovery, entity_registry as er
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.reload import async_integration_yaml_config
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -212,12 +215,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             for coordinator in coordinators.values():
                 await coordinator.async_refresh()
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_REFRESH,
-        handle_refresh_symbols,
-    )
+    async def _async_reload_service_handler(service: ServiceCall) -> None:
+        """Handle reload service call."""
+        reload_config = None
+        with contextlib.suppress(HomeAssistantError):
+            reload_config = await async_integration_yaml_config(hass, DOMAIN)
+        if reload_config is None:
+            return
 
+        _remove_all_existing_symbols(hass)
+        await _async_process_yaml(hass, reload_config)
+
+    hass.services.async_register(DOMAIN, SERVICE_REFRESH, handle_refresh_symbols)
+    hass.services.async_register(DOMAIN, SERVICE_RELOAD, _async_reload_service_handler)
     return True
 
 
@@ -306,3 +316,30 @@ def convert_to_float(value) -> float | None:
         return float(value)
     except:  # noqa: E722 pylint: disable=bare-except
         return None
+
+
+def _remove_all_existing_symbols(hass: HomeAssistant) -> None:
+    """Remove all exisiting symbols."""
+    coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = hass.data[DOMAIN][
+        HASS_DATA_COORDINATORS
+    ]
+
+    if not coordinators:
+        return
+
+    all_existing_symbols = []
+    for coordinator in coordinators.values():
+        all_existing_symbols.extend(coordinator.get_symbols())
+
+    if not all_existing_symbols:
+        return
+
+    entity_registry = er.async_get(hass)
+
+    for symbol in all_existing_symbols:
+        existing_sensor_id = entity_registry.async_get_entity_id(
+            "sensor", DOMAIN, symbol
+        )
+        if existing_sensor_id:
+            LOGGER.debug("Removing entity %s", existing_sensor_id)
+            entity_registry.async_remove(existing_sensor_id)
