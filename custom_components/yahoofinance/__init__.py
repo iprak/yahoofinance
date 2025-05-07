@@ -9,8 +9,8 @@ from datetime import timedelta
 
 import voluptuous as vol
 
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
+from homeassistant.const import CONF_SCAN_INTERVAL, Platform
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_call_later
@@ -197,6 +197,32 @@ def normalize_input_symbols(defined_symbols: list) -> list[SymbolDefinition]:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the component."""
+
+    await _async_process_yaml(hass, config)
+
+    async def handle_refresh_symbols(_call: ServiceCall) -> None:
+        """Refresh symbol data."""
+        LOGGER.info("Processing refresh_symbols")
+
+        # Always use latest coordinators to handle config reload
+        coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = hass.data[DOMAIN][
+            HASS_DATA_COORDINATORS
+        ]
+        if coordinators:
+            for coordinator in coordinators.values():
+                await coordinator.async_refresh()
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REFRESH,
+        handle_refresh_symbols,
+    )
+
+    return True
+
+
+async def _async_process_yaml(hass: HomeAssistant, config: ConfigType) -> None:
+    """Process YAML configuration."""
     domain_config = config.get(DOMAIN, {})
     defined_symbols = domain_config.get(CONF_SYMBOLS, [])
 
@@ -228,7 +254,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         HASS_DATA_CONFIG: domain_config,
     }
 
-    async def _setup_coordinator(now=None) -> None:
+    async def _setup_coordinators(now=None) -> None:
         # Using a static instance to keep the last successful cookies.
         crumb_coordinator = CrumbCoordinator.get_static_instance(hass)
 
@@ -236,7 +262,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         if crumb is None:
             delay = crumb_coordinator.retry_duration
             LOGGER.warning("Unable to get crumb, re-trying in %d seconds", delay)
-            async_call_later(hass, delay, _setup_coordinator)
+            async_call_later(hass, delay, _setup_coordinators)
             return
 
         coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = {}
@@ -260,24 +286,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         # Pass down the coordinator to platforms.
         hass.data[DOMAIN][HASS_DATA_COORDINATORS] = coordinators
 
-        async def handle_refresh_symbols(_call) -> None:
-            """Refresh symbol data."""
-            LOGGER.info("Processing refresh_symbols")
-
-            # Always use latest coordinators to handle config reload
-            coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = hass.data[
-                DOMAIN
-            ][HASS_DATA_COORDINATORS]
-            if coordinators:
-                for coordinator in coordinators.values():
-                    await coordinator.async_refresh()
-
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_REFRESH,
-            handle_refresh_symbols,
-        )
-
         for coordinator in coordinators.values():
             if not coordinator.last_update_success:
                 LOGGER.debug(
@@ -286,11 +294,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 hass.async_create_task(coordinator.async_request_refresh())
 
         hass.async_create_task(
-            discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+            discovery.async_load_platform(hass, Platform.SENSOR, DOMAIN, {}, config)
         )
 
-    await _setup_coordinator()
-    return True
+    await _setup_coordinators()
 
 
 def convert_to_float(value) -> float | None:
