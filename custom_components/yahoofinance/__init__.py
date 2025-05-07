@@ -264,8 +264,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             """Refresh symbol data."""
             LOGGER.info("Processing refresh_symbols")
 
-            for coordinator in coordinators.values():
-                await coordinator.async_refresh()
+            # Always use latest coordinators to handle config reload
+            coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = hass.data[
+                DOMAIN
+            ][HASS_DATA_COORDINATORS]
+            if coordinators:
+                for coordinator in coordinators.values():
+                    await coordinator.async_refresh()
 
         hass.services.async_register(
             DOMAIN,
