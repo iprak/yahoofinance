@@ -208,7 +208,10 @@ yahoofinance:
 
 ## Services
 
-The component exposes the service `yahoofinance.refresh_symbols` which can be used to refresh all the data.
+* The integration configuration can be reloaded from the `YAHOO FINANCE` option on `YAML` tab in `Developer tools`.
+
+* The component exposes the service `yahoofinance.refresh_symbols` which can be used to refresh all the data.
+
 
 ## Breaking Changes
 
