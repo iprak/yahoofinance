@@ -49,8 +49,11 @@ from custom_components.yahoofinance.sensor import (
 )
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import TEST_SYMBOL
+
+SESSION = async_get_clientsession
 
 DEFAULT_OPTIONAL_CONFIG = {
     CONF_DECIMAL_PLACES: DEFAULT_CONF_DECIMAL_PLACES,
@@ -375,7 +378,7 @@ async def test_data_from_json(
     """Tests data update all the way from from json."""
     symbol = TEST_SYMBOL
     coordinator = YahooSymbolUpdateCoordinator(
-        [symbol], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator
+        [symbol], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator, SESSION
     )
     coordinator.get_json = AsyncMock(return_value=mock_json)
 
