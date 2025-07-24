@@ -23,7 +23,6 @@ from custom_components.yahoofinance.const import (
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
     DATA_DIVIDEND_DATE,
-    DATA_FINANCIAL_CURRENCY,
     DATA_LONG_NAME,
     DATA_POST_MARKET_TIME,
     DATA_PRE_MARKET_TIME,
@@ -297,7 +296,7 @@ def test_sensor_name_when_short_name_is_symbol(hass: HomeAssistant) -> None:
     source_data = {
         DATA_CURRENCY_SYMBOL: "USD",
         DATA_LONG_NAME: f"Symbol {symbol} Long",
-        DATA_SHORT_NAME: symbol,
+        DATA_SHORT_NAME: symbol.lower(),
         DATA_REGULAR_MARKET_PRICE: 1.00,
     }
     symbol_data = YahooSymbolUpdateCoordinator.parse_symbol_data(source_data)

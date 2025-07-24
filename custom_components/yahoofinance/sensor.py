@@ -102,7 +102,8 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     _icon = None
     _market_price = None
     _long_name = None
-    _short_name = None
+    _short_name: str | None = None
+    _symbol: str
     _target_currency = None
     _original_currency = None
     _last_available_timer = None
@@ -206,7 +207,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         if self._short_name is not None:
             # In UK regions, shortName was reported to be the same as symbol.
             # Falling to longName if that is available in that case.
-            if self._short_name == self._symbol:
+            if self._short_name.lower() == self._symbol.lower():
                 if self._long_name is not None:
                     return self._long_name
             else:
