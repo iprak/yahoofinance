@@ -23,6 +23,7 @@ from custom_components.yahoofinance.const import (
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
     DATA_DIVIDEND_DATE,
+    DATA_LONG_NAME,
     DATA_POST_MARKET_TIME,
     DATA_PRE_MARKET_TIME,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
@@ -78,6 +79,7 @@ def build_mock_symbol_data(
     """Build mock data for a symbol."""
     source_data = {
         DATA_CURRENCY_SYMBOL: currency,
+        DATA_LONG_NAME: f"Symbol {symbol} Long",
         DATA_SHORT_NAME: f"Symbol {symbol}",
         DATA_REGULAR_MARKET_PRICE: market_price,
     }
@@ -283,6 +285,36 @@ def test_sensor_data_when_coordinator_returns_none(hass: HomeAssistant) -> None:
     assert sensor.state is None
     # Since we do not have data so the name will be the symbol
     assert sensor.name == symbol
+
+
+def test_sensor_name_when_short_name_is_symbol(hass: HomeAssistant) -> None:
+    """Test sensor status when data coordinator does not have any data."""
+
+    symbol = "0P00008F5Y.L"
+    long_name = f"Symbol {symbol} Long"
+
+    source_data = {
+        DATA_CURRENCY_SYMBOL: "USD",
+        DATA_LONG_NAME: f"Symbol {symbol} Long",
+        DATA_SHORT_NAME: symbol.lower(),
+        DATA_REGULAR_MARKET_PRICE: 1.00,
+    }
+    symbol_data = YahooSymbolUpdateCoordinator.parse_symbol_data(source_data)
+
+    mock_coordinator = Mock(
+        data={symbol: symbol_data},
+        hass=hass,
+        last_update_success=False,
+    )
+
+    sensor = YahooFinanceSensor(
+        hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
+    )
+
+    sensor.update_properties()
+
+    assert sensor.available is False
+    assert sensor.name == long_name
 
 
 async def test_sensor_update_calls_coordinator(hass: HomeAssistant) -> None:
