@@ -212,6 +212,10 @@ yahoofinance:
 
 * The component exposes the service `yahoofinance.refresh_symbols` which can be used to refresh all the data.
 
+## Events
+
+* The event `yahoofinance_data_updated` is sent when data is updated. It contains the list of symbols updated. This can be used to take actions upon data update.
+
 
 ## Breaking Changes
 
