@@ -153,6 +153,15 @@ STRING_DATA_KEYS: Final = [
     DATA_MARKET_STATE,
 ]
 
+# Keys of date type values
+DATE_DATA_KEYS: Final = [DATA_DIVIDEND_DATE]
+
+# Keys of time type values
+TIME_DATA_KEYS: Final = [
+    DATA_POST_MARKET_TIME,
+    DATA_PRE_MARKET_TIME,
+    DATA_REGULAR_MARKET_TIME,
+]
 
 ATTRIBUTION: Final = "Data provided by Yahoo Finance"
 BASE: Final = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="
