@@ -149,9 +149,10 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         # pylint: disable=consider-using-dict-items
 
         # Initialize all numeric attributes which we want to include to None
-        for group in NUMERIC_DATA_GROUPS:
-            if group == DEFAULT_NUMERIC_DATA_GROUP or domain_config.get(group, True):
-                for value in NUMERIC_DATA_GROUPS[group]:
+        for group, group_items in NUMERIC_DATA_GROUPS.items():
+            # All optional features data items are excluded by default
+            if group == DEFAULT_NUMERIC_DATA_GROUP or domain_config.get(group, False):
+                for value in group_items:
                     self._numeric_data_to_include.append(value)
 
                     key = value[0]
