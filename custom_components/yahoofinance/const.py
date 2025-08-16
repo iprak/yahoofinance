@@ -13,12 +13,17 @@ ATTR_QUOTE_SOURCE_NAME: Final = "quoteSourceName"
 ATTR_SYMBOL: Final = "symbol"
 ATTR_TRENDING: Final = "trending"
 ATTR_MARKET_STATE: Final = "marketState"
-ATTR_DIVIDEND_DATE: Final = "dividendDate"
 ATTR_REGULAR_MARKET_TIME: Final = "regularMarketTime"
 ATTR_PRE_MARKET_TIME: Final = "preMarketTime"
 ATTR_POST_MARKET_TIME: Final = "postMarketTime"
 ATTR_FORWARD_PE: Final = "forwardPE"
 ATTR_TRAILING_PE: Final = "trailingPE"
+
+ATTR_TRAILING_ANNUAL_DIVIDEND_RATE: Final = "trailingAnnualDividendRate"
+ATTR_TRAILING_ANNUAL_DIVIDEND_YIELD: Final = "trailingAnnualDividendYield"
+ATTR_DIVIDEND_DATE: Final = "dividendDate"
+ATTR_DIVIDEND_RATE: Final = "dividendRate"
+ATTR_DIVIDEND_YIELD: Final = "dividendYield"
 
 # Hass data
 HASS_DATA_CONFIG: Final = "config"
@@ -48,6 +53,7 @@ CONF_INCLUDE_POST_VALUES: Final = "include_post_values"
 CONF_INCLUDE_PRE_VALUES: Final = "include_pre_values"
 CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = "include_two_hundred_day_values"
 CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = "include_fifty_two_week_values"
+CONF_INCLUDE_DIVIDEND_VALUES: Final = "include_dividend_values"
 CONF_SHOW_TRENDING_ICON: Final = "show_trending_icon"
 CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT = "show_currency_symbol_as_unit"
 CONF_TARGET_CURRENCY: Final = "target_currency"
@@ -59,6 +65,7 @@ DEFAULT_CONF_INCLUDE_POST_VALUES: Final = True
 DEFAULT_CONF_INCLUDE_PRE_VALUES: Final = True
 DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = True
 DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = True
+DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES: Final = False
 DEFAULT_CONF_SHOW_TRENDING_ICON: Final = False
 DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT: Final = False
 DEFAULT_CONF_NO_UNIT: Final = False
@@ -83,7 +90,6 @@ NUMERIC_DATA_GROUPS: Final = {
         (DATA_REGULAR_MARKET_PRICE, True),
         ("regularMarketVolume", False),
         (DATA_REGULAR_MARKET_TIME, False),
-        (DATA_DIVIDEND_DATE, False),
         (DATA_FORWARD_PE, False),
         (DATA_TRAILING_PE, False),
     ],
@@ -116,6 +122,13 @@ NUMERIC_DATA_GROUPS: Final = {
         ("fiftyTwoWeekHigh", True),
         ("fiftyTwoWeekHighChange", True),
         ("fiftyTwoWeekHighChangePercent", False),
+    ],
+    CONF_INCLUDE_DIVIDEND_VALUES: [
+        ("dividendDate", False),
+        ("dividendRate", False),
+        ("dividendYield", False),
+        ("trailingAnnualDividendRate", False),
+        ("trailingAnnualDividendYield", False),
     ],
 }
 
