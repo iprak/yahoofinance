@@ -14,7 +14,9 @@ from custom_components.yahoofinance.const import (
     ATTR_CURRENCY_SYMBOL,
     ATTR_TRENDING,
     CONF_DECIMAL_PLACES,
+    CONF_INCLUDE_DIVIDEND_VALUES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
+    CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
     CONF_INCLUDE_POST_VALUES,
     CONF_INCLUDE_PRE_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
@@ -39,6 +41,7 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
+    DEFAULT_NUMERIC_DATA_GROUP,
     DOMAIN,
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATORS,
@@ -183,17 +186,16 @@ def test_sensor_creation(
     assert attributes[ATTR_TRENDING] == "up"
 
     # All numeric values besides DATA_REGULAR_MARKET_PRICE should be 0
-    for data_group in NUMERIC_DATA_GROUPS.values():
-        for value in data_group:
-            key = value[0]
-            if (
-                (key != DATA_REGULAR_MARKET_PRICE)  # noqa: PLR1714
-                and (key != DATA_DIVIDEND_DATE)
-                and (key != DATA_REGULAR_MARKET_TIME)
-                and (key != DATA_PRE_MARKET_TIME)
-                and (key != DATA_POST_MARKET_TIME)
-            ):
-                assert attributes[key] == 0
+    for value in NUMERIC_DATA_GROUPS[DEFAULT_NUMERIC_DATA_GROUP]:
+        key = value[0]
+        if (
+            (key != DATA_REGULAR_MARKET_PRICE)  # noqa: PLR1714
+            and (key != DATA_DIVIDEND_DATE)
+            and (key != DATA_REGULAR_MARKET_TIME)
+            and (key != DATA_PRE_MARKET_TIME)
+            and (key != DATA_POST_MARKET_TIME)
+        ):
+            assert attributes[key] == 0
 
     # Since we did not provide any data so currency should be the default value
     assert sensor.unit_of_measurement == DEFAULT_CURRENCY
@@ -405,31 +407,94 @@ def test_sensor_trending_state_is_not_populate_if_previous_closing_missing(
 
 
 async def test_data_from_json(
-    hass: HomeAssistant, mock_json, mocked_crumb_coordinator
+    hass: HomeAssistant, multiple_sample_data, mocked_crumb_coordinator
 ) -> None:
-    """Tests data update all the way from from json."""
-    symbol = TEST_SYMBOL
+    """Tests data update from json."""
+
+    symbols, json_data = multiple_sample_data
     coordinator = YahooSymbolUpdateCoordinator(
-        [symbol], hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator, SESSION
+        symbols, hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator, SESSION
     )
-    coordinator.get_json = AsyncMock(return_value=mock_json)
+    coordinator.get_json = AsyncMock(return_value=json_data)
 
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
-    sensor = YahooFinanceSensor(
-        hass, coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
+    sensors = []
+    for symbol in symbols:
+        sensor = YahooFinanceSensor(
+            hass, coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
+        )
+        sensors.append(sensor)
+
+    for sensor in sensors:
+        sensor.update_properties()
+        assert sensor.available is True
+
+        attributes = sensor.extra_state_attributes
+
+        assert sensor.state is not None
+        assert attributes["regularMarketChange"] is not None
+
+        for group_key, group_items in NUMERIC_DATA_GROUPS.items():
+            # Data for DEFAULT_NUMERIC_DATA_GROUP should be present
+            if group_key == DEFAULT_NUMERIC_DATA_GROUP:
+                for item in group_items:
+                    data_key = item[0]
+                    assert data_key in attributes
+            else:
+                # There should not be any optional data present
+                for item in group_items:
+                    data_key = item[0]
+                    assert data_key not in attributes
+
+
+@pytest.mark.parametrize(
+    ("optional_feature"),
+    [
+        (CONF_INCLUDE_FIFTY_DAY_VALUES),
+        (CONF_INCLUDE_PRE_VALUES),
+        (CONF_INCLUDE_POST_VALUES),
+        (CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES),
+        (CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES),
+        (CONF_INCLUDE_DIVIDEND_VALUES),
+    ],
+)
+async def test_optional_data_from_json(
+    hass: HomeAssistant,
+    multiple_sample_data,
+    mocked_crumb_coordinator,
+    optional_feature,
+) -> None:
+    """Tests data update of optional feature sets from json."""
+
+    symbols, json_data = multiple_sample_data
+    coordinator = YahooSymbolUpdateCoordinator(
+        symbols, hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator, SESSION
     )
+    coordinator.get_json = AsyncMock(return_value=json_data)
 
-    sensor.update_properties()
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
 
-    assert sensor.available is True
+    config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
+    config[optional_feature] = True
 
-    attributes = sensor.extra_state_attributes
+    sensors = []
+    for symbol in symbols:
+        sensor = YahooFinanceSensor(hass, coordinator, SymbolDefinition(symbol), config)
+        sensors.append(sensor)
 
-    assert sensor.state == 232.73
-    assert attributes["regularMarketChange"] == -5.66
-    assert attributes["twoHundredDayAverageChangePercent"] == -12.61  # from -0.12609957
+    for sensor in sensors:
+        sensor.update_properties()
+        attributes = sensor.extra_state_attributes
+
+        for group_key, group_items in NUMERIC_DATA_GROUPS.items():
+            # Data for optional feature should be present
+            if group_key == optional_feature:
+                for item in group_items:
+                    data_key = item[0]
+                    assert data_key in attributes
 
 
 @pytest.mark.parametrize(

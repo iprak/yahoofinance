@@ -45,6 +45,17 @@ def mock_json():
     return json.loads(load_json("yahoofinance.json"))
 
 
+@pytest.fixture
+def multiple_sample_data() -> tuple[list[str], dict]:
+    """Return sample JSON data and symbols."""
+
+    json_data = json.loads(load_json("yahoofinance.json"))
+    symbols: list[str] = [
+        item["symbol"] for item in json_data["quoteResponse"]["result"]
+    ]
+    return symbols, json_data
+
+
 @pytest.fixture(name="mocked_crumb_coordinator")
 def create_mock_crumb_coordinator(hass: HomeAssistant) -> CrumbCoordinator:
     """Fixture to provide a test instance of CrumbCoordinator."""
