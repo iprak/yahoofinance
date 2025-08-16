@@ -37,20 +37,19 @@ quoteSourceName: Delayed Quote
 marketState: PRE
 averageDailyVolume10Day: 0
 averageDailyVolume3Month: 0
-regularMarketChange: 0.35
-regularMarketChangePercent: 0.5
+regularMarketChange: -0.5
+regularMarketChangePercent: -0.57
 regularMarketDayHigh: 0
 regularMarketDayLow: 0
-regularMarketPreviousClose: 69.93
-regularMarketPrice: 70.28
+regularMarketPreviousClose: 88.34
+regularMarketPrice: 87.84
 regularMarketVolume: 0
-regularMarketTime: 2024-05-10T19:00:27-05:00
-dividendDate: null
+regularMarketTime: 2025-08-16T00:01:15+00:00
 forwardPE: 0
 trailingPE: 0
-fiftyDayAverage: 69.79
-fiftyDayAverageChange: 0.49
-fiftyDayAverageChangePercent: 0.7
+fiftyDayAverage: 83.88
+fiftyDayAverageChange: 3.96
+fiftyDayAverageChangePercent: 4.73
 preMarketChange: 0
 preMarketChangePercent: 0
 preMarketTime: 0
@@ -59,19 +58,24 @@ postMarketChange: 0
 postMarketChangePercent: 0
 postMarketPrice: 0
 postMarketTime: 0
-twoHundredDayAverage: 62.94
-twoHundredDayAverageChange: 7.34
-twoHundredDayAverageChangePercent: 11.67
-fiftyTwoWeekLow: 53.81
-fiftyTwoWeekLowChange: 16.47
-fiftyTwoWeekLowChangePercent: 30.61
-fiftyTwoWeekHigh: 72.44
-fiftyTwoWeekHighChange: -2.16
-fiftyTwoWeekHighChangePercent: -2.98
-trending: up
-unit_of_measurement: USD
-icon: mdi:trending-up
-friendly_name: Ivy Science & Technology Fund C
+twoHundredDayAverage: 75.97
+twoHundredDayAverageChange: 11.87
+twoHundredDayAverageChangePercent: 15.63
+fiftyTwoWeekLow: 57.36
+fiftyTwoWeekLowChange: 30.48
+fiftyTwoWeekLowChangePercent: 53.14
+fiftyTwoWeekHigh: 88.41
+fiftyTwoWeekHighChange: -0.57
+fiftyTwoWeekHighChangePercent: -0.64
+dividendDate: null
+dividendRate: 0
+dividendYield: 0
+trailingAnnualDividendRate: 0
+trailingAnnualDividendYield: 0
+trending: down
+unit_of_measurement: $
+icon: mdi:trending-down
+friendly_name: Delaware Ivy Science and Techno
 ```
 
 #### Attributes
@@ -103,14 +107,53 @@ friendly_name: Ivy Science & Technology Fund C
   decimal_places: 3
   ```
 
-- The fifty_day, post, pre and two_hundred attributes can be suppressed as following. They are included by default.
+- The dividend, fifty_day, post, pre and two_hundred attributes can be included as following. They are all excluded by default.
   ```yaml
-  include_fifty_day_values: false
-  include_fifty_two_week_values: false
-  include_post_values: false
-  include_pre_values: false
-  include_two_hundred_day_values: false
+  include_dividend_values: true
+  include_fifty_day_values: true
+  include_fifty_two_week_values: true
+  include_post_values: true
+  include_pre_values: true
+  include_two_hundred_day_values: true
   ```
+
+  ### Optional attributes
+  #### include_dividend_values
+  - dividendDate
+  - dividendRate
+  - dividendYield
+  - trailingAnnualDividendRate
+  - trailingAnnualDividendYield
+
+  #### include_fifty_day_values
+  - fiftyDayAverage
+  - fiftyDayAverageChange
+  - fiftyDayAverageChangePercent
+
+  #### include_pre_values
+  - preMarketChange
+  - preMarketChangePercent
+  - DATA_PRE_MARKET_TIME
+  - preMarketPrice
+
+  #### include_post_values
+  - postMarketChange
+  - postMarketChangePercent
+  - postMarketPrice
+  - postMarketTime
+
+  #### include_fifty_two_week_values
+  - fiftyTwoWeekLow
+  - fiftyTwoWeekLowChange
+  - fiftyTwoWeekLowChangePercent
+  - fiftyTwoWeekHigh
+  - fiftyTwoWeekHighChange
+  - fiftyTwoWeekHighChangePercent
+
+  ### include_two_hundred_day_values
+  - twoHundredDayAverage
+  - twoHundredDayAverageChange
+  - twoHundredDayAverageChangePercent
 
 - The currency symbol e.g. $ can be show as the unit instead of USD by setting `show_currency_symbol_as_unit: true`.
   - **Note:** Using this setting will generate a warning like `The unit of this entity changed to '$' which can't be converted ...` You will have to manually resolve it by picking the first option to update the unit of the historicalvalues without convertion. This can be done from `Developer tools > STATISTICS`.
@@ -218,7 +261,7 @@ yahoofinance:
 
 
 ## Breaking Changes
-
+- 1.5.0 - All dividend values are controlled by the new setting `include_dividend_values`. The fifty_day, post, pre, two_hundred and dividend attributes are now `excluded` by default.
 - As of version [1.2.5](https://github.com/iprak/yahoofinance/releases/), `scan_interval` can be `manual` to suppress automatic update.
 
 - As of version [1.1.0](https://github.com/iprak/yahoofinance/releases/), the entity id has changed from `yahoofinance.symbol` to `sensor.yahoofinance_symbol`.
