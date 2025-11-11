@@ -32,12 +32,21 @@ from .const import (
     CONF_DECIMAL_PLACES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
     CONF_SHOW_TRENDING_ICON,
+    CONF_SHOW_PRE_MARKET_VALUES,
+    CONF_SHOW_POST_MARKET_VALUES,
     CONF_SYMBOLS,
     CURRENCY_CODES,
     DATA_CURRENCY_SYMBOL,
     DATA_FINANCIAL_CURRENCY,
     DATA_LONG_NAME,
     DATA_MARKET_STATE,
+    DATA_POST_MARKET_PRICE,
+    DATA_POST_MARKET_STATE,
+    DATA_PRE_MARKET_PRICE,
+    DATA_PRE_MARKET_STATE,
+    DATA_PREPRE_MARKET_STATE,
+    DATA_POSTPOST_MARKET_STATE,
+    DATA_CLOSED_MARKET_STATE,
     DATA_QUOTE_SOURCE_NAME,
     DATA_QUOTE_TYPE,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
@@ -83,7 +92,7 @@ async def async_setup_platform(
         for symbol in symbol_definitions
     ]
 
-    # We have already invoked async_refresh on coordinator, so don'tupdate_before_add
+    # We have already invoked async_refresh on coordinator, so don't update_before_add
     async_add_entities(sensors, update_before_add=False)
     LOGGER.info("Entities added for %s", [item.symbol for item in symbol_definitions])
 
@@ -129,6 +138,8 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._previous_close = None
         self._target_currency = symbol_definition.target_currency
         self._no_unit = symbol_definition.no_unit
+        self._show_pre_market_values = domain_config[CONF_SHOW_PRE_MARKET_VALUES]
+        self._show_post_market_values = domain_config[CONF_SHOW_POST_MARKET_VALUES]
 
         self._unique_id = symbol
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
@@ -279,6 +290,23 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         return None
 
+    def _get_market_price_by_state(self, symbol_data: dict) -> float | None:
+        if not symbol_data:
+            return None
+        if (self._show_pre_market_values and
+            DATA_PRE_MARKET_PRICE in symbol_data and
+            symbol_data[DATA_MARKET_STATE] == DATA_PRE_MARKET_STATE):
+            return symbol_data[DATA_PRE_MARKET_PRICE]
+        if (self._show_post_market_values and
+            DATA_POST_MARKET_PRICE in symbol_data and
+            symbol_data[DATA_MARKET_STATE] in [
+                DATA_PREPRE_MARKET_STATE,
+                DATA_POST_MARKET_STATE,
+                DATA_POSTPOST_MARKET_STATE,
+                DATA_CLOSED_MARKET_STATE]):
+            return symbol_data[DATA_POST_MARKET_PRICE]
+        return symbol_data[DATA_REGULAR_MARKET_PRICE]
+
     def _get_target_currency_conversion(self) -> float | None:
         value = None
         self._waiting_on_conversion = False
@@ -309,7 +337,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         symbol_data = self._find_symbol_data(conversion_symbol)
 
         if symbol_data is not None:
-            value = value * symbol_data[DATA_REGULAR_MARKET_PRICE]
+            value = self._get_market_price_by_state(symbol_data)
             LOGGER.debug("%s %s is %s", self._symbol, conversion_symbol, value)
         else:
             LOGGER.info(
@@ -364,7 +392,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._short_name = symbol_data[DATA_SHORT_NAME]
         self._long_name = symbol_data[DATA_LONG_NAME]
 
-        market_price = symbol_data[DATA_REGULAR_MARKET_PRICE]
+        market_price = self._get_market_price_by_state(symbol_data)
         self._market_price = self.safe_convert(market_price, conversion)
         # _market_price gets rounded in the `state` getter.
 

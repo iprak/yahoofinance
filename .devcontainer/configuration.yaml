@@ -13,6 +13,8 @@ logger:
 yahoofinance:
   show_trending_icon: true
   show_currency_symbol_as_unit: true
+  show_pre_market_values: true
+  show_post_market_values: true
 
   include_dividend_values: true
   include_fifty_day_values: true
