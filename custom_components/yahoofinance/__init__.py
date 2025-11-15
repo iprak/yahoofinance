@@ -56,7 +56,7 @@ from .const import (
 from .coordinator import CrumbCoordinator, YahooSymbolUpdateCoordinator
 from .dataclasses import SymbolDefinition
 
-BASIC_SYMBOL_SCHEMA = vol.All(cv.string, vol.Upper)
+BASIC_SYMBOL_SCHEMA = vol.All(cv.string)
 
 
 def minimum_scan_interval(value: timedelta) -> timedelta:
@@ -93,7 +93,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
                 ): SCAN_INTERVAL_SCHEMA,
-                vol.Optional(CONF_TARGET_CURRENCY): vol.All(cv.string, vol.Upper),
+                vol.Optional(CONF_TARGET_CURRENCY): vol.All(cv.string),
                 vol.Optional(
                     CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
                 ): cv.boolean,

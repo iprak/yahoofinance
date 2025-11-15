@@ -98,6 +98,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     _long_name = None
     _short_name: str | None = None
     _symbol: str
+    _financial_currency = None
     _target_currency = None
     _original_currency = None
     _last_available_timer = None
@@ -160,7 +161,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         # Delay initial data population to `available` which is called from `_async_write_ha_state`
         LOGGER.debug(
-            "Created entity for target_currency=%s",
+            "Created entity with target_currency=%s",
             self._target_currency,
         )
 
@@ -282,31 +283,41 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         value = None
         self._waiting_on_conversion = False
 
-        if self._target_currency and self._original_currency:
-            if self._target_currency == self._original_currency:
-                LOGGER.info("%s No conversion necessary", self._symbol)
-                return None
+        if self._original_currency:
+            currency_for_conversion = self._original_currency
 
-            conversion_symbol = (
-                f"{self._original_currency}{self._target_currency}=X".upper()
-            )
-
-            # Locate conversion symbol in all coordinators
-            symbol_data = self._find_symbol_data(conversion_symbol)
-
-            if symbol_data is not None:
-                value = symbol_data[DATA_REGULAR_MARKET_PRICE]
-                LOGGER.debug("%s %s is %s", self._symbol, conversion_symbol, value)
+            if self._original_currency == "GBp" and self._financial_currency == "GBP":
+                currency_for_conversion = "GBP"
+                value = 0.01
             else:
-                LOGGER.info(
-                    "%s No data found for %s, symbol added to coordinator",
-                    self._symbol,
-                    conversion_symbol,
-                )
-                self._waiting_on_conversion = True
+                value = 1
 
-                # The conversion symbol is added to the current coordinator
-                self.coordinator.add_symbol(conversion_symbol)
+            if self._target_currency:
+                if self._target_currency == self._original_currency:
+                    LOGGER.info("%s No conversion necessary", self._symbol)
+                    return None
+
+                conversion_symbol = (
+                    f"{currency_for_conversion}{self._target_currency}=X"
+                )
+
+                # Locate conversion symbol in all coordinators
+                symbol_data = self._find_symbol_data(conversion_symbol)
+
+                if symbol_data is not None:
+                    value = value * symbol_data[DATA_REGULAR_MARKET_PRICE]
+                    LOGGER.debug("%s %s is %s", self._symbol, conversion_symbol, value)
+                else:
+                    LOGGER.info(
+                        "%s No data found for %s, symbol added to coordinator",
+                        self._symbol,
+                        conversion_symbol,
+                    )
+                    self._waiting_on_conversion = True
+                    value = None
+
+                    # The conversion symbol is added to the current coordinator
+                    self.coordinator.add_symbol(conversion_symbol)
 
         return value
 
@@ -319,17 +330,19 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         # Prefer currency over financialCurrency, for foreign symbols financialCurrency
         # can represent the remote currency. But financialCurrency can also be None.
-        financial_currency = symbol_data[DATA_FINANCIAL_CURRENCY]
+        self._financial_currency = symbol_data[DATA_FINANCIAL_CURRENCY]
         currency = symbol_data[DATA_CURRENCY_SYMBOL]
 
         LOGGER.debug(
             "%s currency=%s financialCurrency=%s",
             self._symbol,
             currency,
-            financial_currency,
+            self._financial_currency,
         )
 
-        self._original_currency = currency or financial_currency or DEFAULT_CURRENCY
+        self._original_currency = (
+            currency or self._financial_currency or DEFAULT_CURRENCY
+        )
 
     def update_properties(self) -> None:
         """Update local fields. This is also used in unit testing."""
@@ -414,7 +427,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         else:
             currency = self._original_currency
 
-        self._currency = currency.upper()
+        self._currency = currency
         lower_currency = self._currency.lower()
 
         trending_state = self._calc_trending_state()
