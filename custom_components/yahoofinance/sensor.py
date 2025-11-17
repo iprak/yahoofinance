@@ -301,8 +301,8 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
             symbol[DATA_POST_MARKET_PRICE] and
             symbol_data[DATA_MARKET_STATE] in [
                 DATA_POST_MARKET_STATE,
-		# Market is static in below statuses. Try to use post market price since it is the
-		# latest available price.
+                # Market is static in below statuses. Try to use post market price since it is the
+                # latest available price.
                 DATA_PREPRE_MARKET_STATE,
                 DATA_POSTPOST_MARKET_STATE,
                 DATA_CLOSED_MARKET_STATE]):
