@@ -310,8 +310,8 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         return value
 
-    def _update_original_currency(self, symbol_data) -> bool:
-        """Update the original currency."""
+    def _update_original_currency_once(self, symbol_data) -> bool:
+        """Calculate the original currency once."""
 
         # Symbol currency does not change so calculate it only once
         if self._original_currency is not None:
@@ -344,7 +344,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
             LOGGER.debug("%s Symbol data is None", self._symbol)
             return
 
-        self._update_original_currency(symbol_data)
+        self._update_original_currency_once(symbol_data)
         conversion = self._get_target_currency_conversion()
 
         self._short_name = symbol_data[DATA_SHORT_NAME]
