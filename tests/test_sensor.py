@@ -110,10 +110,11 @@ def build_mock_coordinator_for_conversion(
 ):
     """Build a mock data coordinator with conversion data."""
 
-    target_symbol = f"{currency}{target_currency}=X"
+    # Mock target_symbol as done in sensor.py
+    target_symbol = f"{currency}{target_currency}=X".upper()
     return Mock(
         data={
-            symbol: build_mock_symbol_data(symbol, market_price),
+            symbol: build_mock_symbol_data(symbol, market_price, currency),
             target_symbol: build_mock_symbol_data(
                 target_symbol, target_market_price, target_currency
             ),
@@ -529,6 +530,31 @@ def test_conversion(hass: HomeAssistant) -> None:
 
     assert sensor.available is True
     assert sensor.state == (12 * 1.5)
+
+
+def test_conversion_GBp(hass: HomeAssistant) -> None:
+    """Numeric values get multiplied based on conversion currency."""
+
+    symbol = "XYZ"
+    mock_coordinator = build_mock_coordinator_for_conversion(
+        hass, symbol, 200, "GBp", "CHF", 1.5
+    )
+
+    # Force update _previous_close to None
+    mock_coordinator.data[symbol][DATA_REGULAR_MARKET_PREVIOUS_CLOSE] = None
+    install_coordinator(hass, mock_coordinator)
+
+    sensor = YahooFinanceSensor(
+        hass,
+        mock_coordinator,
+        SymbolDefinition(symbol, target_currency="CHF"),
+        DEFAULT_OPTIONAL_CONFIG,
+    )
+
+    sensor.update_properties()
+
+    assert sensor.available is True
+    assert sensor.state == (200 * 0.01 * 1.5)
 
 
 def test_conversion_requests_additional_data_from_coordinator(
