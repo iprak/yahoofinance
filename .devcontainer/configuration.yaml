@@ -30,6 +30,8 @@ yahoofinance:
   scan_interval: 45
 
   symbols:
+    - symbol: "LGEN.L"
+      target_currency: usd
     - symbol: "0P00008F5Y.L"
     - symbol: GBPUSD=X
       no_unit: true
