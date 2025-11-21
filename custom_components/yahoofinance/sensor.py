@@ -298,7 +298,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
             symbol_data[DATA_MARKET_STATE] == DATA_PRE_MARKET_STATE):
             return symbol_data[DATA_PRE_MARKET_PRICE]
         if (self._show_post_market_values and
-            symbol[DATA_POST_MARKET_PRICE] and
+            symbol_data[DATA_POST_MARKET_PRICE] and
             symbol_data[DATA_MARKET_STATE] in [
                 DATA_POST_MARKET_STATE,
                 # Market is static in below statuses. Try to use post market price since it is the
@@ -339,7 +339,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         symbol_data = self._find_symbol_data(conversion_symbol)
 
         if symbol_data is not None:
-            value = self._get_market_price_by_state(symbol_data)
+            value = value * self._get_market_price_by_state(symbol_data)
             LOGGER.debug("%s %s is %s", self._symbol, conversion_symbol, value)
         else:
             LOGGER.info(
