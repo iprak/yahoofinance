@@ -21,18 +21,26 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_PRE_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    CONF_SHOW_TRENDING_ICON,
-    CONF_SHOW_PRE_MARKET_VALUES,
     CONF_SHOW_POST_MARKET_VALUES,
+    CONF_SHOW_PRE_MARKET_VALUES,
+    CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
+    DATA_CLOSED_MARKET_STATE,
     DATA_CURRENCY_SYMBOL,
     DATA_DIVIDEND_DATE,
     DATA_LONG_NAME,
+    DATA_MARKET_STATE,
+    DATA_POST_MARKET_PRICE,
     DATA_POST_MARKET_TIME,
+    DATA_PRE_MARKET_PRICE,
+    DATA_PRE_MARKET_STATE,
+    DATA_PREPRE_MARKET_STATE,
     DATA_PRE_MARKET_TIME,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
     DATA_REGULAR_MARKET_TIME,
+    DATA_POST_MARKET_STATE,
+    DATA_POSTPOST_MARKET_STATE,
     DATA_SHORT_NAME,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -40,9 +48,9 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CONF_INCLUDE_PRE_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    DEFAULT_CONF_SHOW_TRENDING_ICON,
-    DEFAULT_CONF_SHOW_PRE_MARKET_VALUES,
     DEFAULT_CONF_SHOW_POST_MARKET_VALUES,
+    DEFAULT_CONF_SHOW_PRE_MARKET_VALUES,
+    DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
     DEFAULT_NUMERIC_DATA_GROUP,
@@ -81,9 +89,7 @@ YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 
 
 def build_mock_symbol_data(
-    symbol,
-    market_price,
-    currency="USD",
+    symbol, market_price, currency="USD", additional_symbol_data=None
 ):
     """Build mock data for a symbol."""
     source_data = {
@@ -92,15 +98,27 @@ def build_mock_symbol_data(
         DATA_SHORT_NAME: f"Symbol {symbol}",
         DATA_REGULAR_MARKET_PRICE: market_price,
     }
+
+    if additional_symbol_data:
+        source_data.update(additional_symbol_data)
+
     return YahooSymbolUpdateCoordinator.parse_symbol_data(source_data)
 
 
 def build_mock_coordinator(
-    hass: HomeAssistant, last_update_success, symbol, market_price
+    hass: HomeAssistant,
+    last_update_success,
+    symbol,
+    market_price,
+    additional_symbol_data=None,
 ):
     """Build a mock data coordinator."""
     return Mock(
-        data={symbol: build_mock_symbol_data(symbol, market_price)},
+        data={
+            symbol: build_mock_symbol_data(
+                symbol, market_price, "USD", additional_symbol_data
+            )
+        },
         hass=hass,
         last_update_success=last_update_success,
     )
@@ -209,6 +227,54 @@ def test_sensor_creation(
     assert attributes[ATTR_CURRENCY_SYMBOL] == DEFAULT_CURRENCY_SYMBOL
 
     assert sensor.should_poll is False
+
+
+@pytest.mark.parametrize(
+    ("data_marker"),
+    [
+        (DATA_PRE_MARKET_STATE),
+        (DATA_PREPRE_MARKET_STATE),
+        (DATA_POST_MARKET_STATE),
+        (DATA_POSTPOST_MARKET_STATE),
+    ],
+)
+def test_sensor_creation_market_closed(hass: HomeAssistant, data_marker) -> None:
+    """Test sensor status based on the pre/post market price."""
+
+    symbol = "XYZ"
+    market_price = 12
+    closed_market_price = market_price + 10  # Fake pre/post price
+    last_update_success = True
+
+    additional_symbol_data = {DATA_MARKET_STATE: data_marker}
+    config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
+
+    if data_marker in [DATA_PRE_MARKET_STATE, DATA_PREPRE_MARKET_STATE]:
+        additional_symbol_data[DATA_PRE_MARKET_PRICE] = closed_market_price
+        config[CONF_SHOW_PRE_MARKET_VALUES] = True
+    elif data_marker in [
+        DATA_POST_MARKET_STATE,
+        DATA_POSTPOST_MARKET_STATE,
+        DATA_CLOSED_MARKET_STATE,
+    ]:
+        additional_symbol_data[DATA_POST_MARKET_PRICE] = closed_market_price
+        config[CONF_SHOW_POST_MARKET_VALUES] = True
+
+    mock_coordinator = build_mock_coordinator(
+        hass, last_update_success, symbol, market_price, additional_symbol_data
+    )
+
+    sensor = YahooFinanceSensor(
+        hass,
+        mock_coordinator,
+        SymbolDefinition(symbol),
+        config,
+    )
+
+    # Force sensor update from coordinator
+    sensor.update_properties()
+
+    assert sensor.state == closed_market_price
 
 
 @pytest.mark.parametrize(
