@@ -62,9 +62,9 @@ ENTITY_ID_FORMAT = SENSOR_DOMAIN + "." + DOMAIN + "_{}"
 
 async def async_setup_platform(
     hass: HomeAssistant,
-    _config: ConfigType,
+    config: ConfigType,
     async_add_entities: AddEntitiesCallback,
-    _discovery_info: DiscoveryInfoType | None = None,
+    discovery_info: DiscoveryInfoType | None = None,
 ):
     """Set up the Yahoo Finance sensor platform."""
 
