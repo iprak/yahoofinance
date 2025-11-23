@@ -280,6 +280,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         return None
 
     def _get_target_currency_conversion(self) -> float | None:
+        """Return the conversion factor to target currency."""
         value = None
         self._waiting_on_conversion = False
 
