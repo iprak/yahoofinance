@@ -3,6 +3,9 @@
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
 import pytest
 
 from custom_components.yahoofinance import convert_to_float
@@ -14,8 +17,8 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_OFF_MARKET_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    CONF_SHOW_TRENDING_ICON,
     CONF_SHOW_OFF_MARKET_VALUES,
+    CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES,
@@ -24,8 +27,8 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
+    DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     HASS_DATA_CONFIG,
@@ -35,9 +38,6 @@ from custom_components.yahoofinance.const import (
     SERVICE_REFRESH,
 )
 from custom_components.yahoofinance.dataclasses import SymbolDefinition
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
 
 from . import TEST_CRUMB, TEST_SYMBOL
 

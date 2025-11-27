@@ -58,8 +58,8 @@ from .const import (
     LOGGER,
     NUMERIC_DATA_GROUPS,
     PERCENTAGE_DATA_KEYS_NEEDING_MULTIPLICATION,
-    TIME_DATA_KEYS,
     PRICE_DATA_KEYS,
+    TIME_DATA_KEYS,
 )
 from .coordinator import YahooSymbolUpdateCoordinator
 from .dataclasses import SymbolDefinition

@@ -4,6 +4,8 @@ import json
 import os
 from unittest.mock import AsyncMock
 
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import pytest
 
 from custom_components.yahoofinance.const import DEFAULT_SCAN_INTERVAL
@@ -11,8 +13,6 @@ from custom_components.yahoofinance.coordinator import (
     CrumbCoordinator,
     YahooSymbolUpdateCoordinator,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import TEST_CRUMB, TEST_SYMBOL
 

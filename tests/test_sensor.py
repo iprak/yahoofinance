@@ -3,6 +3,9 @@
 import copy
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import pytest
 
 from custom_components.yahoofinance import (
@@ -20,8 +23,8 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_OFF_MARKET_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    CONF_SHOW_TRENDING_ICON,
     CONF_SHOW_OFF_MARKET_VALUES,
+    CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
     DATA_DIVIDEND_DATE,
@@ -37,8 +40,8 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
+    DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
     DEFAULT_NUMERIC_DATA_GROUP,
@@ -51,9 +54,6 @@ from custom_components.yahoofinance.sensor import (
     YahooFinanceSensor,
     async_setup_platform,
 )
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import TEST_SYMBOL
 
