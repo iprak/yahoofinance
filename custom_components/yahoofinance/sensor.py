@@ -31,7 +31,7 @@ from .const import (
     ATTRIBUTION,
     CONF_DECIMAL_PLACES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    CONF_SHOW_OFF_MARKET,
+    CONF_SHOW_OFF_MARKET_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CURRENCY_CODES,
@@ -136,7 +136,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._previous_close = None
         self._target_currency = symbol_definition.target_currency
         self._no_unit = symbol_definition.no_unit
-        self._show_off_market = domain_config[CONF_SHOW_OFF_MARKET]
+        self._show_off_market_values = domain_config[CONF_SHOW_OFF_MARKET_VALUES]
 
         self._unique_id = symbol
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
@@ -290,7 +290,8 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     def _get_market_price(self, symbol_data: dict) -> float | None:
         if not symbol_data:
             return None
-        if not self._show_off_market or symbol_data[DATA_MARKET_STATE] == DATA_REGULAR_MARKET_STATE:
+        if (not self._show_off_market_values or
+            symbol_data[DATA_MARKET_STATE] == DATA_REGULAR_MARKET_STATE):
           return symbol_data[DATA_REGULAR_MARKET_PRICE]
         if symbol_data[DATA_MARKET_STATE] == DATA_PRE_MARKET_STATE:
             return symbol_data[DATA_PRE_MARKET_PRICE]

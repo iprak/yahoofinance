@@ -107,21 +107,19 @@ friendly_name: Delaware Ivy Science and Techno
   decimal_places: 3
   ```
 
-- The dividend, fifty_day, post, pre and two_hundred attributes can be included as following. They are all excluded by default.
+- The dividend, fifty_day, off market (pre, post) and two_hundred attributes can be included as following. They are all excluded by default.
   ```yaml
   include_dividend_values: true
   include_fifty_day_values: true
   include_fifty_two_week_values: true
-  include_post_values: true
-  include_pre_values: true
+  include_off_market_values: true
   include_two_hundred_day_values: true
   ```
 
-- Show post, pre market prices in the default sensor value, by default disabled. When enabled, it is recommended to also set `include_post_values` and `include_pre_values` to `true`.
+- Show post, pre market prices in the default sensor value, by default disabled. When enabled, it is recommended to also set `include_off_market_values` to `true`.
   ```yaml
-  include_post_values: true
-  include_pre_values: true
-  show_off_market: true
+  include_off_market_values: true
+  show_off_market_values: true
   ```
 
   ### Optional attributes
@@ -137,13 +135,11 @@ friendly_name: Delaware Ivy Science and Techno
   - fiftyDayAverageChange
   - fiftyDayAverageChangePercent
 
-  #### include_pre_values
+  #### include_off_market_values
   - preMarketChange
   - preMarketChangePercent
-  - DATA_PRE_MARKET_TIME
   - preMarketPrice
-
-  #### include_post_values
+  - preMarketTime
   - postMarketChange
   - postMarketChangePercent
   - postMarketPrice
@@ -224,8 +220,7 @@ friendly_name: Delaware Ivy Science and Techno
 
 ```
 yahoofinance:
-  include_post_values: false
-  include_pre_values: false
+  include_off_market_values: true
   show_trending_icon: true
   decimal_places: 2
   scan_interval:

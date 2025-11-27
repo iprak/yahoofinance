@@ -13,13 +13,12 @@ logger:
 yahoofinance:
   show_trending_icon: true
   show_currency_symbol_as_unit: true
-  show_off_market: true
+  show_off_market_values: true
 
   include_dividend_values: true
   include_fifty_day_values: true
   include_fifty_two_week_values: true
-  include_post_values: true
-  include_pre_values: true
+  include_off_market_values: true
   include_two_hundred_day_values: true
 
   #Interval too small - will throw an error
