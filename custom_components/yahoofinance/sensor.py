@@ -31,9 +31,8 @@ from .const import (
     ATTRIBUTION,
     CONF_DECIMAL_PLACES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    CONF_SHOW_OFF_MARKET,
     CONF_SHOW_TRENDING_ICON,
-    CONF_SHOW_PRE_MARKET_VALUES,
-    CONF_SHOW_POST_MARKET_VALUES,
     CONF_SYMBOLS,
     CURRENCY_CODES,
     DATA_CURRENCY_SYMBOL,
@@ -51,6 +50,7 @@ from .const import (
     DATA_QUOTE_TYPE,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
+    DATA_REGULAR_MARKET_STATE,
     DATA_SHORT_NAME,
     DATE_DATA_KEYS,
     DEFAULT_CURRENCY,
@@ -62,6 +62,7 @@ from .const import (
     NUMERIC_DATA_GROUPS,
     PERCENTAGE_DATA_KEYS_NEEDING_MULTIPLICATION,
     TIME_DATA_KEYS,
+    PRICE_DATA_KEYS,
 )
 from .coordinator import YahooSymbolUpdateCoordinator
 from .dataclasses import SymbolDefinition
@@ -138,8 +139,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._previous_close = None
         self._target_currency = symbol_definition.target_currency
         self._no_unit = symbol_definition.no_unit
-        self._show_pre_market_values = domain_config[CONF_SHOW_PRE_MARKET_VALUES]
-        self._show_post_market_values = domain_config[CONF_SHOW_POST_MARKET_VALUES]
+        self._show_off_market = domain_config[CONF_SHOW_OFF_MARKET]
 
         self._unique_id = symbol
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, symbol, hass=hass)
@@ -290,24 +290,23 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
 
         return None
 
-    def _get_market_price_by_state(self, symbol_data: dict) -> float | None:
+    def _get_market_price(self, symbol_data: dict) -> float | None:
         if not symbol_data:
             return None
-        if (self._show_pre_market_values and
-            symbol_data[DATA_PRE_MARKET_PRICE] and
-            symbol_data[DATA_MARKET_STATE] == DATA_PRE_MARKET_STATE):
+        if not self._show_off_market or symbol_data[DATA_MARKET_STATE] == DATA_REGULAR_MARKET_STATE:
+          return symbol_data[DATA_REGULAR_MARKET_PRICE]
+        if symbol_data[DATA_MARKET_STATE] == DATA_PRE_MARKET_STATE:
             return symbol_data[DATA_PRE_MARKET_PRICE]
-        if (self._show_post_market_values and
-            symbol_data[DATA_POST_MARKET_PRICE] and
-            symbol_data[DATA_MARKET_STATE] in [
-                DATA_POST_MARKET_STATE,
-                # Market is static in below statuses. Try to use post market price since it is the
-                # latest available price.
-                DATA_PREPRE_MARKET_STATE,
-                DATA_POSTPOST_MARKET_STATE,
-                DATA_CLOSED_MARKET_STATE]):
+        if symbol_data[DATA_MARKET_STATE] == DATA_POST_MARKET_STATE:
             return symbol_data[DATA_POST_MARKET_PRICE]
-        return symbol_data[DATA_REGULAR_MARKET_PRICE]
+        # For other market states (PREPRE/POSTPOST/CLOSED), use the latest available price.
+        price_time = 0
+        price = None
+        for (t, p) in zip(TIME_DATA_KEYS, PRICE_DATA_KEYS):
+            if price_time < symbol_data[t]:
+                price_time = symbol_data[t]
+                price = symbol_data[p]
+        return price
 
     def _get_target_currency_conversion(self) -> float | None:
         value = None
@@ -339,7 +338,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         symbol_data = self._find_symbol_data(conversion_symbol)
 
         if symbol_data is not None:
-            value = value * self._get_market_price_by_state(symbol_data)
+            value = value * self._get_market_price(symbol_data)
             LOGGER.debug("%s %s is %s", self._symbol, conversion_symbol, value)
         else:
             LOGGER.info(
@@ -394,7 +393,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
         self._short_name = symbol_data[DATA_SHORT_NAME]
         self._long_name = symbol_data[DATA_LONG_NAME]
 
-        market_price = self._get_market_price_by_state(symbol_data)
+        market_price = self._get_market_price(symbol_data)
         self._market_price = self.safe_convert(market_price, conversion)
         # _market_price gets rounded in the `state` getter.
 

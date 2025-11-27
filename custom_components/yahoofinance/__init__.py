@@ -30,9 +30,8 @@ from .const import (
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_NO_UNIT,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    CONF_SHOW_OFF_MARKET,
     CONF_SHOW_TRENDING_ICON,
-    CONF_SHOW_PRE_MARKET_VALUES,
-    CONF_SHOW_POST_MARKET_VALUES,
     CONF_SYMBOLS,
     CONF_TARGET_CURRENCY,
     DEFAULT_CONF_DECIMAL_PLACES,
@@ -44,9 +43,8 @@ from .const import (
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_NO_UNIT,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    DEFAULT_CONF_SHOW_OFF_MARKET,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
-    DEFAULT_CONF_SHOW_PRE_MARKET_VALUES,
-    DEFAULT_CONF_SHOW_POST_MARKET_VALUES,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     HASS_DATA_CONFIG,
@@ -131,12 +129,8 @@ CONFIG_SCHEMA = vol.Schema(
                     default=DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES,
                 ): cv.boolean,
                 vol.Optional(
-                    CONF_SHOW_PRE_MARKET_VALUES,
-                    default=DEFAULT_CONF_SHOW_PRE_MARKET_VALUES,
-                ): cv.boolean,
-                vol.Optional(
-                    CONF_SHOW_POST_MARKET_VALUES,
-                    default=DEFAULT_CONF_SHOW_POST_MARKET_VALUES,
+                    CONF_SHOW_OFF_MARKET,
+                    default=DEFAULT_CONF_SHOW_OFF_MARKET,
                 ): cv.boolean,
             }
         )

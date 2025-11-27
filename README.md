@@ -117,12 +117,11 @@ friendly_name: Delaware Ivy Science and Techno
   include_two_hundred_day_values: true
   ```
 
-- Show post, pre market prices in the default sensor value. They are both disabled by default and only working when setting `include_post_values` and/or `include_pre_values` to `true`.
+- Show post, pre market prices in the default sensor value, by default disabled. When enabled, it is recommended to also set `include_post_values` and `include_pre_values` to `true`.
   ```yaml
   include_post_values: true
-  show_post_market_values: true
   include_pre_values: true
-  show_pre_market_values: true
+  show_off_market: true
   ```
 
   ### Optional attributes
