@@ -22,8 +22,7 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
     CONF_SHOW_TRENDING_ICON,
-    CONF_SHOW_PRE_MARKET_VALUES,
-    CONF_SHOW_POST_MARKET_VALUES,
+    CONF_SHOW_OFF_MARKET,
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
     DATA_DIVIDEND_DATE,
@@ -41,8 +40,7 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
-    DEFAULT_CONF_SHOW_PRE_MARKET_VALUES,
-    DEFAULT_CONF_SHOW_POST_MARKET_VALUES,
+    DEFAULT_CONF_SHOW_OFF_MARKET,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
     DEFAULT_NUMERIC_DATA_GROUP,
@@ -72,8 +70,7 @@ DEFAULT_OPTIONAL_CONFIG = {
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT: DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
-    CONF_SHOW_PRE_MARKET_VALUES: DEFAULT_CONF_SHOW_PRE_MARKET_VALUES,
-    CONF_SHOW_POST_MARKET_VALUES: DEFAULT_CONF_SHOW_POST_MARKET_VALUES,
+    CONF_SHOW_OFF_MARKET: DEFAULT_CONF_SHOW_OFF_MARKET,
     "numeric_values_to_include": ["default"],
 }
 
@@ -502,6 +499,43 @@ async def test_optional_data_from_json(
                 for item in group_items:
                     data_key = item[0]
                     assert data_key in attributes
+
+
+async def test_show_off_market(
+    hass: HomeAssistant,
+    multiple_sample_data,
+    mocked_crumb_coordinator,
+) -> None:
+    """Tests data update to show pre/post market prices."""
+
+    symbols, json_data = multiple_sample_data
+    coordinator = YahooSymbolUpdateCoordinator(
+        symbols, hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator, SESSION
+    )
+    coordinator.get_json = AsyncMock(return_value=json_data)
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
+    config[CONF_SHOW_OFF_MARKET] = True
+
+    sensors = []
+    for symbol in symbols:
+        sensor = YahooFinanceSensor(hass, coordinator, SymbolDefinition(symbol), config)
+        sensors.append(sensor)
+
+    for sensor in sensors:
+        sensor.update_properties()
+        if sensor._symbol == 'ADYEN.US':
+            # Regular market price since the market state is REGULAR
+            assert sensor._market_price == 231.59
+        if sensor._symbol == 'BABA':
+            # Post market price (latest available price) since the market state is CLOSED
+            assert sensor._market_price == 121.17
+        if sensor._symbol == 'AAPL':
+            # Post market price since the market state is POST
+            assert sensor._market_price == 231.18
 
 
 @pytest.mark.parametrize(
