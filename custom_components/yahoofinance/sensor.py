@@ -39,15 +39,10 @@ from .const import (
     DATA_FINANCIAL_CURRENCY,
     DATA_LONG_NAME,
     DATA_MARKET_STATE,
-    DATA_POST_MARKET_PRICE,
-    DATA_POST_MARKET_STATE,
-    DATA_PRE_MARKET_PRICE,
-    DATA_PRE_MARKET_STATE,
     DATA_QUOTE_SOURCE_NAME,
     DATA_QUOTE_TYPE,
     DATA_REGULAR_MARKET_PREVIOUS_CLOSE,
     DATA_REGULAR_MARKET_PRICE,
-    DATA_REGULAR_MARKET_STATE,
     DATA_SHORT_NAME,
     DATE_DATA_KEYS,
     DEFAULT_CURRENCY,
@@ -58,8 +53,7 @@ from .const import (
     LOGGER,
     NUMERIC_DATA_GROUPS,
     PERCENTAGE_DATA_KEYS_NEEDING_MULTIPLICATION,
-    PRICE_DATA_KEYS,
-    TIME_DATA_KEYS,
+    TIME_PRICE_DATA_DICT,
 )
 from .coordinator import YahooSymbolUpdateCoordinator
 from .dataclasses import SymbolDefinition
@@ -290,17 +284,11 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     def _get_market_price(self, symbol_data: dict) -> float | None:
         if not symbol_data:
             return None
-        if (not self._show_off_market_values or
-            symbol_data[DATA_MARKET_STATE] == DATA_REGULAR_MARKET_STATE):
+        if not self._show_off_market_values:
           return symbol_data[DATA_REGULAR_MARKET_PRICE]
-        if symbol_data[DATA_MARKET_STATE] == DATA_PRE_MARKET_STATE:
-            return symbol_data[DATA_PRE_MARKET_PRICE]
-        if symbol_data[DATA_MARKET_STATE] == DATA_POST_MARKET_STATE:
-            return symbol_data[DATA_POST_MARKET_PRICE]
-        # For other market states (PREPRE/POSTPOST/CLOSED), use the latest available price.
         price_time = 0
         price = None
-        for (t, p) in zip(TIME_DATA_KEYS, PRICE_DATA_KEYS):
+        for t, p in TIME_PRICE_DATA_DICT.items():
             if price_time < symbol_data[t]:
                 price_time = symbol_data[t]
                 price = symbol_data[p]
@@ -440,7 +428,7 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
                     )
                 )
 
-        for key in TIME_DATA_KEYS:
+        for key in TIME_PRICE_DATA_DICT:
             if key in self._attr_extra_state_attributes:
                 self._attr_extra_state_attributes[key] = (
                     self.convert_timestamp_to_datetime(

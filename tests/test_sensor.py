@@ -523,14 +523,15 @@ async def test_show_off_market(
 
     for sensor in sensors:
         sensor.update_properties()
+        # Below is expecting the sensor._market_price to be the latest available price
         if sensor._symbol == 'ADYEN.AS':
-            # Regular market price since the market state is REGULAR
+            # Regular market price
             assert sensor._market_price == 1396.4
         if sensor._symbol == 'BABA':
-            # Post market price (latest available price) since the market state is CLOSED
+            # Post market price
             assert sensor._market_price == 121.17
         if sensor._symbol == 'AAPL':
-            # Post market price since the market state is POST
+            # Post market price
             assert sensor._market_price == 231.18
 
 

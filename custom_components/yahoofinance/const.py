@@ -162,18 +162,11 @@ STRING_DATA_KEYS: Final = [
 DATE_DATA_KEYS: Final = [DATA_DIVIDEND_DATE]
 
 # Keys of time type values
-TIME_DATA_KEYS: Final = [
-    DATA_POST_MARKET_TIME,
-    DATA_PRE_MARKET_TIME,
-    DATA_REGULAR_MARKET_TIME,
-]
-
-# Keys of price type values, keep same order as TIME_DATA_KEYS
-PRICE_DATA_KEYS: Final = [
-    DATA_POST_MARKET_PRICE,
-    DATA_PRE_MARKET_PRICE,
-    DATA_REGULAR_MARKET_PRICE,
-]
+TIME_PRICE_DATA_DICT: Final = {
+    DATA_POST_MARKET_TIME: DATA_POST_MARKET_PRICE,
+    DATA_PRE_MARKET_TIME: DATA_PRE_MARKET_PRICE,
+    DATA_REGULAR_MARKET_TIME: DATA_REGULAR_MARKET_PRICE,
+}
 
 ATTRIBUTION: Final = "Data provided by Yahoo Finance"
 BASE: Final = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="
