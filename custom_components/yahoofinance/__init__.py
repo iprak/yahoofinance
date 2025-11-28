@@ -8,8 +8,6 @@ from __future__ import annotations
 import contextlib
 from datetime import timedelta
 
-import voluptuous as vol
-
 from homeassistant.const import CONF_SCAN_INTERVAL, SERVICE_RELOAD, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
@@ -19,17 +17,20 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.reload import async_integration_yaml_config
 from homeassistant.helpers.typing import ConfigType
+import voluptuous as vol
 
 from .const import (
     CONF_DECIMAL_PLACES,
     CONF_INCLUDE_DIVIDEND_VALUES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
     CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
+    CONF_INCLUDE_OFF_MARKET_VALUES,
     CONF_INCLUDE_POST_VALUES,
     CONF_INCLUDE_PRE_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_NO_UNIT,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    CONF_SHOW_OFF_MARKET_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CONF_TARGET_CURRENCY,
@@ -37,11 +38,13 @@ from .const import (
     DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
     DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
+    DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES,
     DEFAULT_CONF_INCLUDE_POST_VALUES,
     DEFAULT_CONF_INCLUDE_PRE_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_NO_UNIT,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -109,6 +112,10 @@ CONFIG_SCHEMA = vol.Schema(
                     default=DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
                 ): cv.boolean,
                 vol.Optional(
+                    CONF_INCLUDE_OFF_MARKET_VALUES,
+                    default=DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES,
+                ): cv.boolean,
+                vol.Optional(
                     CONF_INCLUDE_POST_VALUES, default=DEFAULT_CONF_INCLUDE_POST_VALUES
                 ): cv.boolean,
                 vol.Optional(
@@ -125,6 +132,10 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(
                     CONF_INCLUDE_DIVIDEND_VALUES,
                     default=DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES,
+                ): cv.boolean,
+                vol.Optional(
+                    CONF_SHOW_OFF_MARKET_VALUES,
+                    default=DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
                 ): cv.boolean,
             }
         )

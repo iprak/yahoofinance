@@ -38,6 +38,7 @@ DATA_LONG_NAME: Final = "longName"
 DATA_SHORT_NAME: Final = "shortName"
 DATA_MARKET_STATE: Final = "marketState"
 DATA_DIVIDEND_DATE: Final = "dividendDate"
+DATA_REGULAR_MARKET_STATE: Final = "REGULAR"
 DATA_REGULAR_MARKET_TIME: Final = "regularMarketTime"
 DATA_PRE_MARKET_TIME: Final = "preMarketTime"
 DATA_POST_MARKET_TIME: Final = "postMarketTime"
@@ -46,9 +47,14 @@ DATA_TRAILING_PE: Final = "trailingPE"
 
 DATA_REGULAR_MARKET_PREVIOUS_CLOSE: Final = "regularMarketPreviousClose"
 DATA_REGULAR_MARKET_PRICE: Final = "regularMarketPrice"
+DATA_PRE_MARKET_PRICE: Final = "preMarketPrice"
+DATA_POST_MARKET_PRICE: Final = "postMarketPrice"
+DATA_PRE_MARKET_STATE: Final = "PRE"
+DATA_POST_MARKET_STATE: Final = "POST"
 
 CONF_DECIMAL_PLACES: Final = "decimal_places"
 CONF_INCLUDE_FIFTY_DAY_VALUES: Final = "include_fifty_day_values"
+CONF_INCLUDE_OFF_MARKET_VALUES: Final = "include_off_market_values"
 CONF_INCLUDE_POST_VALUES: Final = "include_post_values"
 CONF_INCLUDE_PRE_VALUES: Final = "include_pre_values"
 CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = "include_two_hundred_day_values"
@@ -56,6 +62,7 @@ CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = "include_fifty_two_week_values"
 CONF_INCLUDE_DIVIDEND_VALUES: Final = "include_dividend_values"
 CONF_SHOW_TRENDING_ICON: Final = "show_trending_icon"
 CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT = "show_currency_symbol_as_unit"
+CONF_SHOW_OFF_MARKET_VALUES= "show_off_market_values"
 CONF_TARGET_CURRENCY: Final = "target_currency"
 CONF_NO_UNIT: Final = "no_unit"
 
@@ -64,12 +71,14 @@ DEFAULT_CONF_DECIMAL_PLACES: Final = 2
 DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = False
+DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_POST_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_PRE_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = False
 
 DEFAULT_CONF_SHOW_TRENDING_ICON: Final = False
 DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT: Final = False
+DEFAULT_CONF_SHOW_OFF_MARKET_VALUES = False
 DEFAULT_CONF_NO_UNIT: Final = False
 
 DEFAULT_NUMERIC_DATA_GROUP: Final = "default"
@@ -100,13 +109,23 @@ NUMERIC_DATA_GROUPS: Final = {
         ("fiftyDayAverageChange", True),
         ("fiftyDayAverageChangePercent", False),
     ],
+    CONF_INCLUDE_POST_VALUES: [
+        ("postMarketChange", True),
+        ("postMarketChangePercent", False),
+        ("postMarketPrice", True),
+        (DATA_POST_MARKET_TIME, False),
+    ],
     CONF_INCLUDE_PRE_VALUES: [
         ("preMarketChange", True),
         ("preMarketChangePercent", False),
-        (DATA_PRE_MARKET_TIME, False),
         ("preMarketPrice", True),
+        (DATA_PRE_MARKET_TIME, False),
     ],
-    CONF_INCLUDE_POST_VALUES: [
+    CONF_INCLUDE_OFF_MARKET_VALUES: [
+        ("preMarketChange", True),
+        ("preMarketChangePercent", False),
+        ("preMarketPrice", True),
+        (DATA_PRE_MARKET_TIME, False),
         ("postMarketChange", True),
         ("postMarketChangePercent", False),
         ("postMarketPrice", True),
@@ -159,11 +178,11 @@ STRING_DATA_KEYS: Final = [
 DATE_DATA_KEYS: Final = [DATA_DIVIDEND_DATE]
 
 # Keys of time type values
-TIME_DATA_KEYS: Final = [
-    DATA_POST_MARKET_TIME,
-    DATA_PRE_MARKET_TIME,
-    DATA_REGULAR_MARKET_TIME,
-]
+TIME_PRICE_DATA_DICT: Final = {
+    DATA_POST_MARKET_TIME: DATA_POST_MARKET_PRICE,
+    DATA_PRE_MARKET_TIME: DATA_PRE_MARKET_PRICE,
+    DATA_REGULAR_MARKET_TIME: DATA_REGULAR_MARKET_PRICE,
+}
 
 ATTRIBUTION: Final = "Data provided by Yahoo Finance"
 BASE: Final = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="

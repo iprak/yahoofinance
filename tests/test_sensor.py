@@ -3,6 +3,9 @@
 import copy
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import pytest
 
 from custom_components.yahoofinance import (
@@ -17,10 +20,10 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_DIVIDEND_VALUES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
     CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES,
-    CONF_INCLUDE_POST_VALUES,
-    CONF_INCLUDE_PRE_VALUES,
+    CONF_INCLUDE_OFF_MARKET_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    CONF_SHOW_OFF_MARKET_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
@@ -34,10 +37,10 @@ from custom_components.yahoofinance.const import (
     DATA_SHORT_NAME,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
-    DEFAULT_CONF_INCLUDE_POST_VALUES,
-    DEFAULT_CONF_INCLUDE_PRE_VALUES,
+    DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
@@ -51,9 +54,6 @@ from custom_components.yahoofinance.sensor import (
     YahooFinanceSensor,
     async_setup_platform,
 )
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import TEST_SYMBOL
 
@@ -62,12 +62,12 @@ SESSION = async_get_clientsession
 DEFAULT_OPTIONAL_CONFIG = {
     CONF_DECIMAL_PLACES: DEFAULT_CONF_DECIMAL_PLACES,
     CONF_INCLUDE_FIFTY_DAY_VALUES: DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
-    CONF_INCLUDE_POST_VALUES: DEFAULT_CONF_INCLUDE_POST_VALUES,
-    CONF_INCLUDE_PRE_VALUES: DEFAULT_CONF_INCLUDE_PRE_VALUES,
+    CONF_INCLUDE_OFF_MARKET_VALUES: DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT: DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    CONF_SHOW_OFF_MARKET_VALUES: DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
     "numeric_values_to_include": ["default"],
 }
 
@@ -454,8 +454,7 @@ async def test_data_from_json(
     ("optional_feature"),
     [
         (CONF_INCLUDE_FIFTY_DAY_VALUES),
-        (CONF_INCLUDE_PRE_VALUES),
-        (CONF_INCLUDE_POST_VALUES),
+        (CONF_INCLUDE_OFF_MARKET_VALUES),
         (CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES),
         (CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES),
         (CONF_INCLUDE_DIVIDEND_VALUES),
@@ -496,6 +495,44 @@ async def test_optional_data_from_json(
                 for item in group_items:
                     data_key = item[0]
                     assert data_key in attributes
+
+
+async def test_show_off_market(
+    hass: HomeAssistant,
+    multiple_sample_data,
+    mocked_crumb_coordinator,
+) -> None:
+    """Tests data update to show pre/post market prices."""
+
+    symbols, json_data = multiple_sample_data
+    coordinator = YahooSymbolUpdateCoordinator(
+        symbols, hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator, SESSION
+    )
+    coordinator.get_json = AsyncMock(return_value=json_data)
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
+    config[CONF_SHOW_OFF_MARKET_VALUES] = True
+
+    sensors = []
+    for symbol in symbols:
+        sensor = YahooFinanceSensor(hass, coordinator, SymbolDefinition(symbol), config)
+        sensors.append(sensor)
+
+    for sensor in sensors:
+        sensor.update_properties()
+        # Below is expecting the sensor._market_price to be the latest available price
+        if sensor._symbol == 'ADYEN.AS':
+            # Regular market price
+            assert sensor._market_price == 1396.4
+        if sensor._symbol == 'BABA':
+            # Post market price
+            assert sensor._market_price == 121.17
+        if sensor._symbol == 'AAPL':
+            # Post market price
+            assert sensor._market_price == 231.18
 
 
 @pytest.mark.parametrize(
