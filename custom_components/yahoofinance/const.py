@@ -55,6 +55,8 @@ DATA_POST_MARKET_STATE: Final = "POST"
 CONF_DECIMAL_PLACES: Final = "decimal_places"
 CONF_INCLUDE_FIFTY_DAY_VALUES: Final = "include_fifty_day_values"
 CONF_INCLUDE_OFF_MARKET_VALUES: Final = "include_off_market_values"
+CONF_INCLUDE_POST_VALUES: Final = "include_post_values"
+CONF_INCLUDE_PRE_VALUES: Final = "include_pre_values"
 CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = "include_two_hundred_day_values"
 CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = "include_fifty_two_week_values"
 CONF_INCLUDE_DIVIDEND_VALUES: Final = "include_dividend_values"
@@ -70,6 +72,8 @@ DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_FIFTY_TWO_WEEK_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_OFF_MARKET_VALUES: Final = False
+DEFAULT_CONF_INCLUDE_POST_VALUES: Final = False
+DEFAULT_CONF_INCLUDE_PRE_VALUES: Final = False
 DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES: Final = False
 
 DEFAULT_CONF_SHOW_TRENDING_ICON: Final = False
@@ -104,6 +108,18 @@ NUMERIC_DATA_GROUPS: Final = {
         ("fiftyDayAverage", True),
         ("fiftyDayAverageChange", True),
         ("fiftyDayAverageChangePercent", False),
+    ],
+    CONF_INCLUDE_POST_VALUES: [
+        ("postMarketChange", True),
+        ("postMarketChangePercent", False),
+        ("postMarketPrice", True),
+        (DATA_POST_MARKET_TIME, False),
+    ],
+    CONF_INCLUDE_PRE_VALUES: [
+        ("preMarketChange", True),
+        ("preMarketChangePercent", False),
+        ("preMarketPrice", True),
+        (DATA_PRE_MARKET_TIME, False),
     ],
     CONF_INCLUDE_OFF_MARKET_VALUES: [
         ("preMarketChange", True),
