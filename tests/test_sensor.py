@@ -3,9 +3,6 @@
 import copy
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import pytest
 
 from custom_components.yahoofinance import (
@@ -54,6 +51,9 @@ from custom_components.yahoofinance.sensor import (
     YahooFinanceSensor,
     async_setup_platform,
 )
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import TEST_SYMBOL
 

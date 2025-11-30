@@ -3,9 +3,6 @@
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
-from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
 import pytest
 
 from custom_components.yahoofinance import convert_to_float
@@ -42,6 +39,9 @@ from custom_components.yahoofinance.const import (
     SERVICE_REFRESH,
 )
 from custom_components.yahoofinance.dataclasses import SymbolDefinition
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
 
 from . import TEST_CRUMB, TEST_SYMBOL
 

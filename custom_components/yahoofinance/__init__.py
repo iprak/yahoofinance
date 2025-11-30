@@ -8,6 +8,8 @@ from __future__ import annotations
 import contextlib
 from datetime import timedelta
 
+import voluptuous as vol
+
 from homeassistant.const import CONF_SCAN_INTERVAL, SERVICE_RELOAD, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
@@ -17,7 +19,6 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.reload import async_integration_yaml_config
 from homeassistant.helpers.typing import ConfigType
-import voluptuous as vol
 
 from .const import (
     CONF_DECIMAL_PLACES,

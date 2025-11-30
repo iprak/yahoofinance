@@ -7,8 +7,6 @@ import random
 from unittest.mock import AsyncMock, Mock, patch
 
 import aiohttp
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import pytest
 
 from custom_components.yahoofinance import (
@@ -21,6 +19,8 @@ from custom_components.yahoofinance.coordinator import (
     FAILURE_ASYNC_REQUEST_REFRESH,
     CrumbCoordinator,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import TEST_CRUMB, TEST_SYMBOL
 from .conftest import create_mock_coordinator
