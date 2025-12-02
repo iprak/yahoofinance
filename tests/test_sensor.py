@@ -497,10 +497,20 @@ async def test_optional_data_from_json(
                     assert data_key in attributes
 
 
+@pytest.mark.parametrize(
+    ("symbol", "expected_market_price"),
+    [
+        ('ADYEN', 1396.4),
+        ('Alibaba Group Holding Limited', 121.17),
+        ('Apple Inc.', 231.18),
+    ],
+)
 async def test_show_off_market(
     hass: HomeAssistant,
     multiple_sample_data,
     mocked_crumb_coordinator,
+    symbol,
+    expected_market_price,
 ) -> None:
     """Tests data update to show pre/post market prices."""
 
@@ -517,22 +527,14 @@ async def test_show_off_market(
     config[CONF_SHOW_OFF_MARKET_VALUES] = True
 
     sensors = []
-    for symbol in symbols:
-        sensor = YahooFinanceSensor(hass, coordinator, SymbolDefinition(symbol), config)
+    for s in symbols:
+        sensor = YahooFinanceSensor(hass, coordinator, SymbolDefinition(s), config)
         sensors.append(sensor)
 
     for sensor in sensors:
         sensor.update_properties()
-        # Below is expecting the sensor._market_price to be the latest available price
-        if sensor._symbol == 'ADYEN.AS':
-            # Regular market price
-            assert sensor._market_price == 1396.4
-        if sensor._symbol == 'BABA':
-            # Post market price
-            assert sensor._market_price == 121.17
-        if sensor._symbol == 'AAPL':
-            # Post market price
-            assert sensor._market_price == 231.18
+        if symbol in sensor.name:
+          assert sensor.state == expected_market_price
 
 
 @pytest.mark.parametrize(
