@@ -21,6 +21,7 @@ from custom_components.yahoofinance.const import (
     CONF_INCLUDE_PRE_VALUES,
     CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    CONF_SHOW_OFF_MARKET_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     DATA_CURRENCY_SYMBOL,
@@ -38,6 +39,7 @@ from custom_components.yahoofinance.const import (
     DEFAULT_CONF_INCLUDE_PRE_VALUES,
     DEFAULT_CONF_INCLUDE_TWO_HUNDRED_DAY_VALUES,
     DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
     DEFAULT_CONF_SHOW_TRENDING_ICON,
     DEFAULT_CURRENCY,
     DEFAULT_CURRENCY_SYMBOL,
@@ -68,6 +70,7 @@ DEFAULT_OPTIONAL_CONFIG = {
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
     CONF_SHOW_TRENDING_ICON: DEFAULT_CONF_SHOW_TRENDING_ICON,
     CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT: DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT,
+    CONF_SHOW_OFF_MARKET_VALUES: DEFAULT_CONF_SHOW_OFF_MARKET_VALUES,
     "numeric_values_to_include": ["default"],
 }
 
@@ -496,6 +499,46 @@ async def test_optional_data_from_json(
                 for item in group_items:
                     data_key = item[0]
                     assert data_key in attributes
+
+
+@pytest.mark.parametrize(
+    ("symbol", "expected_market_price"),
+    [
+        ('ADYEN', 1396.4),
+        ('Alibaba Group Holding Limited', 121.17),
+        ('Apple Inc.', 231.18),
+    ],
+)
+async def test_show_off_market(
+    hass: HomeAssistant,
+    multiple_sample_data,
+    mocked_crumb_coordinator,
+    symbol,
+    expected_market_price,
+) -> None:
+    """Tests data update to show pre/post market prices."""
+
+    symbols, json_data = multiple_sample_data
+    coordinator = YahooSymbolUpdateCoordinator(
+        symbols, hass, DEFAULT_SCAN_INTERVAL, mocked_crumb_coordinator, SESSION
+    )
+    coordinator.get_json = AsyncMock(return_value=json_data)
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    config = copy.deepcopy(DEFAULT_OPTIONAL_CONFIG)
+    config[CONF_SHOW_OFF_MARKET_VALUES] = True
+
+    sensors = []
+    for s in symbols:
+        sensor = YahooFinanceSensor(hass, coordinator, SymbolDefinition(s), config)
+        sensors.append(sensor)
+
+    for sensor in sensors:
+        sensor.update_properties()
+        if symbol in sensor.name:
+          assert sensor.state == expected_market_price
 
 
 @pytest.mark.parametrize(

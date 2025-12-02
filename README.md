@@ -117,6 +117,13 @@ friendly_name: Delaware Ivy Science and Techno
   include_two_hundred_day_values: true
   ```
 
+- Show post, pre market prices in the default sensor value, by default disabled. When enabled, it is recommended to also set `include_post_values` and `include_pre_values` to `true`.
+  ```yaml
+  include_post_values: true
+  include_pre_values: true
+  show_off_market_values: true
+  ```
+
   ### Optional attributes
   #### include_dividend_values
   - dividendDate
@@ -133,8 +140,8 @@ friendly_name: Delaware Ivy Science and Techno
   #### include_pre_values
   - preMarketChange
   - preMarketChangePercent
-  - DATA_PRE_MARKET_TIME
   - preMarketPrice
+  - preMarketTime
 
   #### include_post_values
   - postMarketChange
