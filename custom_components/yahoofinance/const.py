@@ -198,6 +198,8 @@ XHR_REQUEST_HEADERS: Final = {
 }
 """ Headers for all XHR requests. """
 
+YAHOO_QUOTE_URL: Final = "https://finance.yahoo.com/quote/"
+
 CONF_SYMBOLS: Final = "symbols"
 DEFAULT_CURRENCY: Final = "USD"
 DEFAULT_CURRENCY_SYMBOL: Final = "$"

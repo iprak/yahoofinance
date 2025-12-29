@@ -14,7 +14,8 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import ATTR_ATTRIBUTION
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import async_generate_entity_id
+from homeassistant.helpers.device_registry import DeviceEntryType
+from homeassistant.helpers.entity import DeviceInfo, async_generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType, StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -54,6 +55,7 @@ from .const import (
     NUMERIC_DATA_GROUPS,
     PERCENTAGE_DATA_KEYS_NEEDING_MULTIPLICATION,
     TIME_PRICE_DATA_DICT,
+    YAHOO_QUOTE_URL,
 )
 from .coordinator import YahooSymbolUpdateCoordinator
 from .dataclasses import SymbolDefinition
@@ -198,6 +200,19 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     def unique_id(self) -> str:
         """Return a unique ID."""
         return self._unique_id
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device registry information."""
+        device_name = self._long_name or self._short_name or self._symbol
+        return DeviceInfo(
+            configuration_url=f"{YAHOO_QUOTE_URL}{self._symbol}",
+            entry_type=DeviceEntryType.SERVICE,
+            identifiers={(DOMAIN, self._symbol)},
+            manufacturer="Yahoo",
+            model=self._short_name or self._symbol,
+            name=f"Yahoo Finance {device_name}",
+        )
 
     @property
     def name(self) -> str:
