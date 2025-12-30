@@ -204,14 +204,13 @@ class YahooFinanceSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device registry information."""
-        device_name = self._long_name or self._short_name or self._symbol
         return DeviceInfo(
             configuration_url=f"{YAHOO_QUOTE_URL}{self._symbol}",
             entry_type=DeviceEntryType.SERVICE,
             identifiers={(DOMAIN, self._symbol)},
             manufacturer="Yahoo",
             model=self._short_name or self._symbol,
-            name=f"Yahoo Finance {device_name}",
+            name=f"Yahoo Finance {self.name}",
         )
 
     @property

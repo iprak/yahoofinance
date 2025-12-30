@@ -176,6 +176,7 @@ ATTRIBUTION: Final = "Data provided by Yahoo Finance"
 BASE: Final = "https://query1.finance.yahoo.com/v7/finance/quote?symbols="
 
 INITIAL_URL: Final = "https://finance.yahoo.com/quote/NQ%3DF/"
+YAHOO_QUOTE_URL: Final = "https://finance.yahoo.com/quote/"
 CONSENT_HOST: Final = "consent.yahoo.com"
 GET_CRUMB_URL: Final = "https://query2.finance.yahoo.com/v1/test/getcrumb"
 
@@ -197,8 +198,6 @@ XHR_REQUEST_HEADERS: Final = {
     "accept-language": "en-US,en;q=0.9",
 }
 """ Headers for all XHR requests. """
-
-YAHOO_QUOTE_URL: Final = "https://finance.yahoo.com/quote/"
 
 CONF_SYMBOLS: Final = "symbols"
 DEFAULT_CURRENCY: Final = "USD"
