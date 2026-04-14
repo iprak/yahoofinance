@@ -13,7 +13,11 @@ from custom_components.yahoofinance import (
     YahooSymbolUpdateCoordinator,
     coordinator,
 )
-from custom_components.yahoofinance.const import BASE, DATA_REGULAR_MARKET_PRICE
+from custom_components.yahoofinance.const import (
+    BASE,
+    DATA_REGULAR_MARKET_PRICE,
+    MANUAL_SCAN_INTERVAL,
+)
 from custom_components.yahoofinance.coordinator import CrumbCoordinator
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -320,3 +324,15 @@ def test_get_finance_error_code() -> None:
     assert YahooSymbolUpdateCoordinator.get_finance_error_code(
         {"finance": {"error": {"code": "code", "description": "description"}}}
     ) == ("code", "description")
+
+
+def test_manual_scan_interval(hass: HomeAssistant, mocked_crumb_coordinator) -> None:
+    """Test manual scan interval."""
+    mock_coordinator = YahooSymbolUpdateCoordinator(
+        [TEST_SYMBOL],
+        hass,
+        MANUAL_SCAN_INTERVAL,
+        mocked_crumb_coordinator,
+        SESSION,
+    )
+    assert mock_coordinator.update_interval is None
