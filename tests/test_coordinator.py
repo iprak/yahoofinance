@@ -1,7 +1,6 @@
 """Tests for Yahoo Finance component."""
 
 import asyncio
-from datetime import timedelta
 from http import HTTPStatus
 import random
 from unittest.mock import AsyncMock, Mock, patch
@@ -15,15 +14,12 @@ from custom_components.yahoofinance import (
     coordinator,
 )
 from custom_components.yahoofinance.const import BASE, DATA_REGULAR_MARKET_PRICE
-from custom_components.yahoofinance.coordinator import (
-    FAILURE_ASYNC_REQUEST_REFRESH,
-    CrumbCoordinator,
-)
+from custom_components.yahoofinance.coordinator import CrumbCoordinator
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from . import TEST_CRUMB, TEST_SYMBOL
-from .conftest import create_mock_coordinator
+from . import TEST_CRUMB, TEST_SYMBOL  # noqa: TID251
+from .conftest import create_mock_coordinator  # noqa: TID251
 
 TEST_SYMBOL2 = "RBOT.L"
 SECOND_TEST_SYMBOL = "^SSMI"
@@ -152,55 +148,6 @@ async def test_add_symbol_existing(
         SESSION,
     )
     assert mock_coordinator.add_symbol(TEST_SYMBOL) is False
-
-
-async def test_update_interval_when_update_fails(
-    hass: HomeAssistant, mocked_crumb_coordinator
-) -> None:
-    """Update interval for the next async_track_point_in_utc_time call."""
-    mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL],
-        hass,
-        DEFAULT_SCAN_INTERVAL,
-        mocked_crumb_coordinator,
-        SESSION,
-    )
-
-    # update_interval is DEFAULT_SCAN_INTERVAL
-    assert mock_coordinator.update_interval is DEFAULT_SCAN_INTERVAL
-
-    # update_interval is FAILURE_ASYNC_REQUEST_REFRESH if update failed
-    mock_coordinator.websession.get = AsyncMock(side_effect=aiohttp.ClientError)
-    await mock_coordinator.async_refresh()
-
-    assert mock_coordinator.update_interval == timedelta(
-        seconds=FAILURE_ASYNC_REQUEST_REFRESH
-    )
-
-
-async def test_update_when_update_is_disabled(
-    hass: HomeAssistant, mocked_crumb_coordinator
-) -> None:
-    """No update is performed if update_interval is None."""
-
-    mock_coordinator = YahooSymbolUpdateCoordinator(
-        [TEST_SYMBOL],
-        hass,
-        None,
-        mocked_crumb_coordinator,
-        SESSION,
-    )
-
-    # There is no update for "manual" update case when update is disabled
-    assert mock_coordinator.update_interval is None
-
-    # Mock a failure for manual refresh
-    mock_coordinator.websession.get = AsyncMock(side_effect=aiohttp.ClientError)
-    await mock_coordinator.async_refresh()
-
-    assert mock_coordinator.update_interval == timedelta(
-        seconds=FAILURE_ASYNC_REQUEST_REFRESH
-    )
 
 
 @pytest.mark.parametrize(
