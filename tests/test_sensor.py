@@ -48,6 +48,7 @@ from custom_components.yahoofinance.const import (
     HASS_DATA_CONFIG,
     HASS_DATA_COORDINATORS,
     NUMERIC_DATA_GROUPS,
+    YAHOO_QUOTE_URL,
 )
 from custom_components.yahoofinance.sensor import (
     YahooFinanceSensor,
@@ -56,6 +57,7 @@ from custom_components.yahoofinance.sensor import (
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import DeviceEntryType
 
 from . import TEST_SYMBOL
 
@@ -335,6 +337,28 @@ async def test_sensor_update_calls_coordinator(hass: HomeAssistant) -> None:
 
     await sensor.async_update()
     assert mock_coordinator.async_request_refresh.call_count == 1
+
+
+def test_device_info_exposes_symbol_details() -> None:
+    """Ensure each entity registers a per-symbol device."""
+
+    mock_hass = MagicMock()
+    mock_hass.states.async_available.return_value = True
+
+    symbol = "XYZ"
+    mock_coordinator = build_mock_coordinator(mock_hass, True, symbol, 12)
+    sensor = YahooFinanceSensor(
+        mock_hass, mock_coordinator, SymbolDefinition(symbol), DEFAULT_OPTIONAL_CONFIG
+    )
+
+    sensor.update_properties()
+    info = sensor.device_info
+
+    assert info["entry_type"] is DeviceEntryType.SERVICE
+    assert info["identifiers"] == {(DOMAIN, symbol)}
+    assert info["configuration_url"] == f"{YAHOO_QUOTE_URL}{symbol}"
+    assert info["manufacturer"] == "Yahoo"
+    assert info["name"] == "Yahoo Finance Symbol XYZ Long"
 
 
 @pytest.mark.parametrize(
