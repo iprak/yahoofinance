@@ -97,6 +97,19 @@ friendly_name: Delaware Ivy Science and Techno
 
   You can disable automatic update by passing `manual` for `scan_interval`.
 
+- Active time window and active days can be specified to restrict API requests to specific hours and weekdays. Outside these times, no API calls to Yahoo Finance are made. The default values are "00:00", "23:59" and all days of the week. 
+
+  ```yaml
+  active_start: "09:30"
+  active_end: "16:00"
+  active_days:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  ```
+
 - Trending icons (trending-up, trending-down or trending-neutral) can be displayed instead of currency based icon by specifying `show_trending_icon`.
   ```yaml
   show_trending_icon: true
@@ -178,22 +191,19 @@ friendly_name: Delaware Ivy Science and Techno
 
   If data for the target currency is not found, then the display will remain in original currency. The conversion is only applied on the attributes representing prices.
 
-- The data fetch interval can be fine tuned at symbol level. By default, the `scan_interval` from the integration is used. The minimum value is still 30 seconds. Symbols with the same `scan_interval` are grouped together and loaded through one data coordinator.
+- The data fetch interval, active time range and active days can be fine tuned at symbol level. By default, the `scan_interval`, `active_start`, `active_end` and `active_days` from the integration are used. Symbols with the same `scan_interval` are grouped together and loaded through one data coordinator, and the minimum value is still 30 seconds.
 
   If conversion data needs to be loaded, then that too will get added to the same coordinator. However, if conversion symbol is found in another coordinator, then that will get used.
 
   ```yaml
-  scan_interval:
-    hours: 4
-  ```
-
-  ```yaml
-  scan_interval:
-    minutes: 5
-  ```
-
-  ```yaml
-  scan_interval: 300
+  symbols:
+    - BTC-USD
+    - symbol: SPCX
+      scan_interval:
+        minutes: 5
+      active_start: "09:00"
+      active_end: "17:00"
+      active_days: [mon, tue, wed, thu, fri]
   ```
 
 - The `unit_of_measurement` can be suppressed by setting `no_unit: true`. This could be used for index symbols if no currency unit is desired to be displayed.

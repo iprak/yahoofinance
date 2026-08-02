@@ -336,3 +336,112 @@ def test_manual_scan_interval(hass: HomeAssistant, mocked_crumb_coordinator) -> 
         SESSION,
     )
     assert mock_coordinator.update_interval is None
+
+
+@pytest.mark.parametrize(
+    ("active_start", "active_end", "active_days", "test_dt", "expected"),
+    [
+        # No active constraints -> always active
+        (None, None, None, "2026-08-03 12:00:00", True),
+        # Active days constraint (2026-08-03 is Monday, index 0)
+        (None, None, [0, 1, 2, 3, 4], "2026-08-03 12:00:00", True),  # Mon -> True
+        (None, None, [0, 1, 2, 3, 4], "2026-08-02 12:00:00", False), # Sun (index 6) -> False
+        # Active time window (09:30 to 16:00)
+        (
+            from_str_time("09:30"),
+            from_str_time("16:00"),
+            None,
+            "2026-08-03 10:00:00",
+            True,
+        ),
+        (
+            from_str_time("09:30"),
+            from_str_time("16:00"),
+            None,
+            "2026-08-03 08:00:00",
+            False,
+        ),
+        (
+            from_str_time("09:30"),
+            from_str_time("16:00"),
+            None,
+            "2026-08-03 17:00:00",
+            False,
+        ),
+        # Overnight active time window (22:00 to 04:00)
+        (
+            from_str_time("22:00"),
+            from_str_time("04:00"),
+            None,
+            "2026-08-03 23:00:00",
+            True,
+        ),
+        (
+            from_str_time("22:00"),
+            from_str_time("04:00"),
+            None,
+            "2026-08-03 02:00:00",
+            True,
+        ),
+        (
+            from_str_time("22:00"),
+            from_str_time("04:00"),
+            None,
+            "2026-08-03 12:00:00",
+            False,
+        ),
+    ],
+)
+def test_is_active_time(
+    hass: HomeAssistant,
+    mocked_crumb_coordinator,
+    active_start,
+    active_end,
+    active_days,
+    test_dt,
+    expected,
+) -> None:
+    """Test is_active_time helper."""
+    from datetime import datetime
+
+    mock_coordinator = YahooSymbolUpdateCoordinator(
+        [TEST_SYMBOL],
+        hass,
+        DEFAULT_SCAN_INTERVAL,
+        mocked_crumb_coordinator,
+        SESSION,
+        active_start=active_start,
+        active_end=active_end,
+        active_days=active_days,
+    )
+    dt = datetime.strptime(test_dt, "%Y-%m-%d %H:%M:%S")
+    assert mock_coordinator.is_active_time(dt) is expected
+
+
+def from_str_time(val: str):
+    """Parse string HH:MM into time object."""
+    from datetime import datetime
+    return datetime.strptime(val, "%H:%M").time()
+
+
+async def test_async_update_data_outside_active_range(
+    hass: HomeAssistant, mocked_crumb_coordinator
+) -> None:
+    """Verify API request is skipped when outside active time range."""
+    mock_coordinator = YahooSymbolUpdateCoordinator(
+        [TEST_SYMBOL],
+        hass,
+        DEFAULT_SCAN_INTERVAL,
+        mocked_crumb_coordinator,
+        SESSION,
+    )
+    mock_coordinator.is_active_time = Mock(return_value=False)
+    mock_coordinator.get_json = AsyncMock()
+
+    existing_data = {TEST_SYMBOL: {DATA_REGULAR_MARKET_PRICE: 100.0}}
+    mock_coordinator.data = existing_data
+
+    result = await mock_coordinator._async_update_data()
+    assert result == existing_data
+    assert mock_coordinator.get_json.call_count == 0
+

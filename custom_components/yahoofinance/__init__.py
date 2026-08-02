@@ -21,6 +21,9 @@ from homeassistant.helpers.reload import async_integration_yaml_config
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    CONF_ACTIVE_DAYS,
+    CONF_ACTIVE_END,
+    CONF_ACTIVE_START,
     CONF_DECIMAL_PLACES,
     CONF_INCLUDE_DIVIDEND_VALUES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -34,6 +37,9 @@ from .const import (
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
     CONF_TARGET_CURRENCY,
+    DEFAULT_CONF_ACTIVE_DAYS,
+    DEFAULT_CONF_ACTIVE_END,
+    DEFAULT_CONF_ACTIVE_START,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -54,6 +60,7 @@ from .const import (
     MAX_LINE_SIZE,
     MINIMUM_SCAN_INTERVAL,
     SERVICE_REFRESH,
+    WEEKDAYS,
 )
 from .coordinator import CrumbCoordinator, YahooSymbolUpdateCoordinator
 from .dataclasses import SymbolDefinition
@@ -68,6 +75,37 @@ def minimum_scan_interval(value: timedelta) -> timedelta:
     return value
 
 
+def validate_active_days(values: list[str | int] | str | int) -> list[int]:
+    """Validate and normalize active_days configuration into list of integer weekday indexes (0-6)."""
+    if not isinstance(values, list):
+        values = [values]
+
+    result = []
+    for item in values:
+        if isinstance(item, int):
+            if 0 <= item <= 6:
+                if item not in result:
+                    result.append(item)
+            else:
+                raise vol.Invalid(
+                    f"Invalid day index {item}. Must be between 0 (Mon) and 6 (Sun)."
+                )
+        elif isinstance(item, str):
+            day_str = item.strip().lower()
+            if day_str in WEEKDAYS:
+                idx = WEEKDAYS.index(day_str)
+                if idx not in result:
+                    result.append(idx)
+            else:
+                raise vol.Invalid(
+                    f"Invalid day '{item}'. Must be one of {WEEKDAYS} or integer 0-6."
+                )
+        else:
+            raise vol.Invalid(f"Invalid day format {item}.")
+    return sorted(result)
+
+
+ACTIVE_DAYS_SCHEMA = vol.All(cv.ensure_list, validate_active_days)
 MANUAL_SCAN_INTERVAL_SCHEMA = vol.All(vol.Lower, MANUAL_SCAN_INTERVAL)
 CUSTOM_SCAN_INTERVAL_SCHEMA = vol.All(cv.time_period, minimum_scan_interval)
 SCAN_INTERVAL_SCHEMA = vol.Any(MANUAL_SCAN_INTERVAL_SCHEMA, CUSTOM_SCAN_INTERVAL_SCHEMA)
@@ -80,6 +118,9 @@ COMPLEX_SYMBOL_SCHEMA = vol.All(
             vol.Optional(CONF_TARGET_CURRENCY): BASIC_SYMBOL_SCHEMA,
             vol.Optional(CONF_SCAN_INTERVAL): SCAN_INTERVAL_SCHEMA,
             vol.Optional(CONF_NO_UNIT, default=DEFAULT_CONF_NO_UNIT): cv.boolean,
+            vol.Optional(CONF_ACTIVE_START): cv.time,
+            vol.Optional(CONF_ACTIVE_END): cv.time,
+            vol.Optional(CONF_ACTIVE_DAYS): ACTIVE_DAYS_SCHEMA,
         }
     ),
 )
@@ -95,6 +136,15 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
                 ): SCAN_INTERVAL_SCHEMA,
+                vol.Optional(
+                    CONF_ACTIVE_START, default=DEFAULT_CONF_ACTIVE_START
+                ): cv.time,
+                vol.Optional(
+                    CONF_ACTIVE_END, default=DEFAULT_CONF_ACTIVE_END
+                ): cv.time,
+                vol.Optional(
+                    CONF_ACTIVE_DAYS, default=DEFAULT_CONF_ACTIVE_DAYS
+                ): ACTIVE_DAYS_SCHEMA,
                 vol.Optional(CONF_TARGET_CURRENCY): vol.All(cv.string, vol.Upper),
                 vol.Optional(
                     CONF_SHOW_TRENDING_ICON, default=DEFAULT_CONF_SHOW_TRENDING_ICON
@@ -160,6 +210,9 @@ def normalize_input_symbols(defined_symbols: list) -> list[SymbolDefinition]:
                         target_currency=value.get(CONF_TARGET_CURRENCY),
                         scan_interval=value.get(CONF_SCAN_INTERVAL),
                         no_unit=value.get(CONF_NO_UNIT),
+                        active_start=value.get(CONF_ACTIVE_START),
+                        active_end=value.get(CONF_ACTIVE_END),
+                        active_days=value.get(CONF_ACTIVE_DAYS),
                     )
                 )
 
@@ -209,23 +262,36 @@ async def _async_process_yaml(hass: HomeAssistant, config: ConfigType) -> None:
     domain_config[CONF_SYMBOLS] = symbol_definitions
 
     global_scan_interval = domain_config.get(CONF_SCAN_INTERVAL)
+    global_active_start = domain_config.get(CONF_ACTIVE_START)
+    global_active_end = domain_config.get(CONF_ACTIVE_END)
+    global_active_days = domain_config.get(CONF_ACTIVE_DAYS)
 
     # Populate parsed value into domain_config
     domain_config[CONF_SCAN_INTERVAL] = global_scan_interval
+    domain_config[CONF_ACTIVE_START] = global_active_start
+    domain_config[CONF_ACTIVE_END] = global_active_end
+    domain_config[CONF_ACTIVE_DAYS] = global_active_days
 
-    # Group symbols by scan_interval
-    symbols_by_scan_interval: dict[timedelta, list[str]] = {}
+    # Group symbols by coordinator key
+    symbols_by_coordinator: dict[tuple, list[str]] = {}
     for symbol in symbol_definitions:
-        # Use integration level scan_interval if none defined
+        # Use integration level values if none defined
         if symbol.scan_interval is None:
             symbol.scan_interval = global_scan_interval
+        if symbol.active_start is None:
+            symbol.active_start = global_active_start
+        if symbol.active_end is None:
+            symbol.active_end = global_active_end
+        if symbol.active_days is None:
+            symbol.active_days = global_active_days
 
-        if symbol.scan_interval in symbols_by_scan_interval:
-            symbols_by_scan_interval[symbol.scan_interval].append(symbol.symbol)
+        coord_key = symbol.coordinator_key
+        if coord_key in symbols_by_coordinator:
+            symbols_by_coordinator[coord_key].append(symbol.symbol)
         else:
-            symbols_by_scan_interval[symbol.scan_interval] = [symbol.symbol]
+            symbols_by_coordinator[coord_key] = [symbol.symbol]
 
-    LOGGER.info("Total %d unique scan intervals", len(symbols_by_scan_interval))
+    LOGGER.info("Total %d unique symbol update coordinators", len(symbols_by_coordinator))
 
     # Pass down the config to platforms.
     hass.data[DOMAIN] = {
@@ -248,17 +314,32 @@ async def _async_process_yaml(hass: HomeAssistant, config: ConfigType) -> None:
             async_call_later(hass, delay, _setup_coordinators)
             return
 
-        coordinators: dict[timedelta, YahooSymbolUpdateCoordinator] = {}
-        for key_scan_interval, symbols in symbols_by_scan_interval.items():
+        coordinators: dict[Any, YahooSymbolUpdateCoordinator] = {}
+        for coord_key, symbols in symbols_by_coordinator.items():
+            key_scan_interval, active_start, active_end, active_days_tuple = coord_key
+            active_days = list(active_days_tuple) if active_days_tuple is not None else None
+
             LOGGER.info(
-                "Creating coordinator with scan_interval %s for symbols %s",
+                "Creating coordinator with scan_interval %s, active_start %s, active_end %s, active_days %s for symbols %s",
                 key_scan_interval,
+                active_start,
+                active_end,
+                active_days,
                 symbols,
             )
             coordinator = YahooSymbolUpdateCoordinator(
-                symbols, hass, key_scan_interval, crumb_coordinator, websession
+                symbols,
+                hass,
+                key_scan_interval,
+                crumb_coordinator,
+                websession,
+                active_start=active_start,
+                active_end=active_end,
+                active_days=active_days,
             )
-            coordinators[key_scan_interval] = coordinator
+            coordinators[coord_key] = coordinator
+            if active_start is None and active_end is None and active_days is None:
+                coordinators[key_scan_interval] = coordinator
 
             LOGGER.info(
                 "Requesting initial data from coordinator with update interval of %s",

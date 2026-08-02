@@ -1,12 +1,15 @@
 """Tests for Yahoo Finance component."""
 
-from datetime import timedelta
+from datetime import time, timedelta
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
 from custom_components.yahoofinance import convert_to_float
 from custom_components.yahoofinance.const import (
+    CONF_ACTIVE_DAYS,
+    CONF_ACTIVE_END,
+    CONF_ACTIVE_START,
     CONF_DECIMAL_PLACES,
     CONF_INCLUDE_DIVIDEND_VALUES,
     CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -18,6 +21,9 @@ from custom_components.yahoofinance.const import (
     CONF_SHOW_OFF_MARKET_VALUES,
     CONF_SHOW_TRENDING_ICON,
     CONF_SYMBOLS,
+    DEFAULT_CONF_ACTIVE_DAYS,
+    DEFAULT_CONF_ACTIVE_END,
+    DEFAULT_CONF_ACTIVE_START,
     DEFAULT_CONF_DECIMAL_PLACES,
     DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES,
     DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
@@ -47,6 +53,9 @@ SAMPLE_CONFIG = {DOMAIN: {CONF_SYMBOLS: [TEST_SYMBOL]}}
 YSUC = "custom_components.yahoofinance.YahooSymbolUpdateCoordinator"
 YCC = "custom_components.yahoofinance.CrumbCoordinator"
 DEFAULT_OPTIONAL_CONFIG = {
+    CONF_ACTIVE_START: DEFAULT_CONF_ACTIVE_START,
+    CONF_ACTIVE_END: DEFAULT_CONF_ACTIVE_END,
+    CONF_ACTIVE_DAYS: DEFAULT_CONF_ACTIVE_DAYS,
     CONF_DECIMAL_PLACES: DEFAULT_CONF_DECIMAL_PLACES,
     CONF_INCLUDE_FIFTY_DAY_VALUES: DEFAULT_CONF_INCLUDE_FIFTY_DAY_VALUES,
     CONF_INCLUDE_POST_VALUES: DEFAULT_CONF_INCLUDE_POST_VALUES,
@@ -187,18 +196,56 @@ async def test_invalid_global_scan_interval(
             },
         ),
         (
-            # Expanded format - override None scan interval
+            # Global active start/end and days
             {
-                CONF_SYMBOLS: [
-                    {"symbol": "xyz", "scan_interval": MANUAL_SCAN_INTERVAL}
-                ],
-                CONF_SCAN_INTERVAL: 3600,
+                CONF_SYMBOLS: ["xyz"],
+                CONF_ACTIVE_START: "09:30",
+                CONF_ACTIVE_END: "16:00",
+                CONF_ACTIVE_DAYS: ["mon", "tue", "wed", "thu", "fri"],
             },
             {
                 CONF_SYMBOLS: [
-                    SymbolDefinition("XYZ", scan_interval=MANUAL_SCAN_INTERVAL)
+                    SymbolDefinition(
+                        "XYZ",
+                        scan_interval=DEFAULT_SCAN_INTERVAL,
+                        active_start=time(9, 30),
+                        active_end=time(16, 0),
+                        active_days=[0, 1, 2, 3, 4],
+                    )
                 ],
-                CONF_SCAN_INTERVAL: timedelta(hours=1),
+                CONF_ACTIVE_START: time(9, 30),
+                CONF_ACTIVE_END: time(16, 0),
+                CONF_ACTIVE_DAYS: [0, 1, 2, 3, 4],
+            },
+        ),
+        (
+            # Symbol override for active start/end/days
+            {
+                CONF_SYMBOLS: [
+                    {
+                        "symbol": "xyz",
+                        "active_start": "10:00",
+                        "active_end": "15:00",
+                        "active_days": [0, 2, 4],
+                    }
+                ],
+                CONF_ACTIVE_START: "09:30",
+                CONF_ACTIVE_END: "16:00",
+                CONF_ACTIVE_DAYS: ["mon", "tue", "wed", "thu", "fri"],
+            },
+            {
+                CONF_SYMBOLS: [
+                    SymbolDefinition(
+                        "XYZ",
+                        scan_interval=DEFAULT_SCAN_INTERVAL,
+                        active_start=time(10, 0),
+                        active_end=time(15, 0),
+                        active_days=[0, 2, 4],
+                    )
+                ],
+                CONF_ACTIVE_START: time(9, 30),
+                CONF_ACTIVE_END: time(16, 0),
+                CONF_ACTIVE_DAYS: [0, 1, 2, 3, 4],
             },
         ),
     ],
@@ -326,6 +373,7 @@ def test_symbol_definition_comparison(
         assert sym1 == sym2
         assert hash(sym1) == hash(sym2)
         assert str(sym1) == str(sym2)
+        assert sym1.coordinator_key == sym2.coordinator_key
     else:
         assert sym1 != sym2
         assert hash(sym1) != hash(sym2)
