@@ -6,7 +6,7 @@ https://github.com/iprak/yahoofinance
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 import re
@@ -17,6 +17,7 @@ import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import (
     BASE,
@@ -379,6 +380,9 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         update_interval: timedelta,
         cc: CrumbCoordinator,
         webSession: aiohttp.ClientSession,
+        active_start: time | None = None,
+        active_end: time | None = None,
+        active_days: list[int] | None = None,
     ) -> None:
         """Initialize."""
         self._symbols = symbols
@@ -387,6 +391,9 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.websession = webSession
         self._cc = cc
         self.failed_count = 0
+        self._active_start = active_start
+        self._active_end = active_end
+        self._active_days = active_days
 
         if isinstance(update_interval, str) and update_interval == MANUAL_SCAN_INTERVAL:
             update_interval = None
@@ -397,6 +404,40 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name="YahooSymbolUpdateCoordinator",
             update_interval=update_interval,
         )
+
+    def is_active_time(self, now: datetime | None = None) -> bool:
+        """Check if current day and time is within active range."""
+        if now is None:
+            now = dt_util.now()
+
+        # Check active days (0 = Monday, ..., 6 = Sunday)
+        if self._active_days is not None:
+            if now.weekday() not in self._active_days:
+                return False
+
+        # Check active start / end times
+        if self._active_start is not None or self._active_end is not None:
+            current_time = now.time()
+            start = self._active_start
+            end = self._active_end
+
+            if start is not None and end is not None:
+                if start <= end:
+                    # Normal daytime window e.g. 09:30 to 16:00
+                    if not (start <= current_time <= end):
+                        return False
+                else:
+                    # Overnight window e.g. 22:00 to 04:00
+                    if not (current_time >= start or current_time <= end):
+                        return False
+            elif start is not None:
+                if current_time < start:
+                    return False
+            elif end is not None:
+                if current_time > end:
+                    return False
+
+        return True
 
     def get_symbols(self) -> list[str]:
         """Return symbols tracked by the coordinator."""
@@ -560,6 +601,10 @@ class YahooSymbolUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         The exception will get properly handled in the caller (DataUpdateCoordinator.async_refresh)
         which also updates last_update_success. UpdateFailed is raised if JSON is invalid.
         """
+
+        if not self.is_active_time():
+            LOGGER.debug("Outside active range, skipping data fetch for %s", self._symbols)
+            return self.data or {}
 
         retry_after = RETRY_INTERVALS[min(self.failed_count, len(RETRY_INTERVALS) - 1)]
 

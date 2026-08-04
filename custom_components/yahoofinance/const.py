@@ -52,6 +52,9 @@ DATA_POST_MARKET_PRICE: Final = "postMarketPrice"
 DATA_PRE_MARKET_STATE: Final = "PRE"
 DATA_POST_MARKET_STATE: Final = "POST"
 
+CONF_ACTIVE_START: Final = "active_start"
+CONF_ACTIVE_END: Final = "active_end"
+CONF_ACTIVE_DAYS: Final = "active_days"
 CONF_DECIMAL_PLACES: Final = "decimal_places"
 CONF_INCLUDE_FIFTY_DAY_VALUES: Final = "include_fifty_day_values"
 CONF_INCLUDE_POST_VALUES: Final = "include_post_values"
@@ -65,6 +68,9 @@ CONF_SHOW_OFF_MARKET_VALUES= "show_off_market_values"
 CONF_TARGET_CURRENCY: Final = "target_currency"
 CONF_NO_UNIT: Final = "no_unit"
 
+DEFAULT_CONF_ACTIVE_START: Final = None
+DEFAULT_CONF_ACTIVE_END: Final = None
+DEFAULT_CONF_ACTIVE_DAYS: Final = None
 DEFAULT_CONF_DECIMAL_PLACES: Final = 2
 
 DEFAULT_CONF_INCLUDE_DIVIDEND_VALUES: Final = False
@@ -78,6 +84,8 @@ DEFAULT_CONF_SHOW_TRENDING_ICON: Final = False
 DEFAULT_CONF_SHOW_CURRENCY_SYMBOL_AS_UNIT: Final = False
 DEFAULT_CONF_SHOW_OFF_MARKET_VALUES = False
 DEFAULT_CONF_NO_UNIT: Final = False
+
+WEEKDAYS: Final = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 DEFAULT_NUMERIC_DATA_GROUP: Final = "default"
 

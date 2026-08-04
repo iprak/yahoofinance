@@ -79,7 +79,10 @@ async def async_setup_platform(
 
     sensors = [
         YahooFinanceSensor(
-            hass, coordinators[symbol.scan_interval], symbol, domain_config
+            hass,
+            coordinators.get(symbol.coordinator_key, coordinators.get(symbol.scan_interval)),
+            symbol,
+            domain_config,
         )
         for symbol in symbol_definitions
     ]
